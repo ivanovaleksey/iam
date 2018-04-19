@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use models::account::Account;
+use models::Account;
 use schema::refresh_token;
 
 #[derive(Associations, Identifiable, Queryable, Debug)]

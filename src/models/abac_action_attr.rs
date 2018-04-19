@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use models::namespace::Namespace;
+use models::Namespace;
 use schema::abac_action_attr;
 
 #[derive(Associations, Identifiable, Queryable, Debug)]

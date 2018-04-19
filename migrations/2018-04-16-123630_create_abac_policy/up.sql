@@ -1,5 +1,5 @@
 create table abac_policy (
-  id uuid,
+  id uuid default uuid_generate_v4(),
   namespace_id uuid not null,
   subject_value text not null,
   object_value text not null,

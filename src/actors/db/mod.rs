@@ -1,6 +1,9 @@
 use actix::prelude::*;
 
+pub use actors::db::messages::*;
 use DbPool;
+
+mod messages;
 
 pub struct DbExecutor(pub DbPool);
 

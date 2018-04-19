@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use models::namespace::Namespace;
+use models::Namespace;
 use schema::identity;
 
 #[derive(Associations, Identifiable, Queryable, Debug)]

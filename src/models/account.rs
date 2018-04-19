@@ -6,7 +6,7 @@ use schema::account;
 #[derive(Identifiable, Queryable, Debug)]
 #[table_name = "account"]
 pub struct Account {
-    id: Uuid,
-    enabled: bool,
-    constraints: Value,
+    pub id: Uuid,
+    pub enabled: bool,
+    pub constraints: Value,
 }

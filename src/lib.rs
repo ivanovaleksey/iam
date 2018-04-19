@@ -40,12 +40,12 @@ pub struct AppState {
 }
 
 pub fn build_app(database_url: String) -> App<AppState> {
-    App::with_state(build_app_state(database_url)).resource("/", |r| r.h(call))
-}
-
-pub fn build_app_state(database_url: String) -> AppState {
     let manager = r2d2::ConnectionManager::<PgConnection>::new(database_url);
     let pool = r2d2::Pool::new(manager).unwrap();
+    App::with_state(build_app_state(pool)).resource("/", |r| r.h(call))
+}
+
+pub fn build_app_state(pool: DbPool) -> AppState {
     let addr = SyncArbiter::start(num_cpus::get(), move || DbExecutor(pool.clone()));
 
     AppState {
@@ -64,12 +64,13 @@ pub fn call(req: HttpRequest<AppState>) -> FutureResponse<HttpResponse> {
         .from_err()
         .and_then(move |bytes: Bytes| {
             let bytes = bytes.to_vec();
+            // TODO: do not unwrap
             let msg = String::from_utf8(bytes).unwrap();
 
             req.state()
                 .rpc_server
                 .handle_request(&msg, meta)
-                .map_err(|e| actix_web::error::ErrorInternalServerError(e))
+                .map_err(actix_web::error::ErrorInternalServerError)
                 .and_then(|resp| {
                     if let Some(resp) = resp {
                         Ok(HttpResponse::Ok().body(resp))

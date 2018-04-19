@@ -1,13 +1,34 @@
+use diesel;
 use jsonrpc;
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-#[derive(Debug, Fail)]
-#[fail(display = "IAM error")]
-pub struct Error;
+#[derive(Debug, Fail, PartialEq)]
+pub enum Error {
+    #[fail(display = "{}", _0)]
+    Db(#[cause] diesel::result::Error),
+}
+
+impl From<diesel::result::Error> for Error {
+    fn from(e: diesel::result::Error) -> Self {
+        Error::Db(e)
+    }
+}
 
 impl From<Error> for jsonrpc::Error {
-    fn from(_e: Error) -> Self {
-        jsonrpc::Error::internal_error()
+    fn from(e: Error) -> Self {
+        let code = match e {
+            Error::Db(ref e) => match *e {
+                diesel::result::Error::NotFound => 404,
+                _ => 422,
+            },
+            _ => 500,
+        };
+
+        jsonrpc::Error {
+            code: jsonrpc::ErrorCode::ServerError(code),
+            message: e.to_string(),
+            data: None,
+        }
     }
 }
