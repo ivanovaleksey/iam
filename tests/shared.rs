@@ -29,3 +29,7 @@ pub fn build_server() -> Server {
 
     Server { srv, pool }
 }
+
+pub fn strip_json(json: &str) -> String {
+    json.replace('\n', "").replace(' ', "")
+}

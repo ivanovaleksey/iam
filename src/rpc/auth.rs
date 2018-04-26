@@ -138,7 +138,8 @@ mod tests {
             .values((
                 abac_object_attr::namespace_id.eq(namespace.id),
                 abac_object_attr::object_id.eq("room"),
-                abac_object_attr::value.eq("type:room"),
+                abac_object_attr::key.eq("type"),
+                abac_object_attr::value.eq("room"),
             ))
             .execute(conn)
             .unwrap();

@@ -7,9 +7,10 @@ table! {
 }
 
 table! {
-    abac_object_attr (namespace_id, value, object_id) {
+    abac_object_attr (namespace_id, object_id, key, value) {
         namespace_id -> Uuid,
         object_id -> Text,
+        key -> Text,
         value -> Text,
     }
 }
