@@ -3,13 +3,13 @@ use diesel;
 use diesel::prelude::*;
 use uuid::Uuid;
 
+use iam::models::*;
+use iam::schema::*;
+
 use shared;
 
 #[test]
-fn test_list() {
-    use iam::models::*;
-    use iam::schema::*;
-
+fn test() {
     let shared::Server { mut srv, pool } = shared::build_server();
 
     let account_id = Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
@@ -35,12 +35,22 @@ fn test_list() {
             .get_result::<Namespace>(&conn)
             .unwrap();
 
-        diesel::insert_into(abac_object_attr::table)
+        diesel::insert_into(abac_subject_attr::table)
             .values((
-                abac_object_attr::namespace_id.eq(namespace.id),
-                abac_object_attr::object_id.eq("room"),
-                abac_object_attr::key.eq("type"),
-                abac_object_attr::value.eq("room"),
+                abac_subject_attr::namespace_id.eq(namespace.id),
+                abac_subject_attr::subject_id.eq(account_id),
+                abac_subject_attr::key.eq("role"),
+                abac_subject_attr::value.eq("admin"),
+            ))
+            .execute(&conn)
+            .unwrap();
+
+        diesel::insert_into(abac_subject_attr::table)
+            .values((
+                abac_subject_attr::namespace_id.eq(namespace.id),
+                abac_subject_attr::subject_id.eq(account_id),
+                abac_subject_attr::key.eq("role"),
+                abac_subject_attr::value.eq("client"),
             ))
             .execute(&conn)
             .unwrap();
@@ -48,9 +58,9 @@ fn test_list() {
 
     let json = r#"{
         "jsonrpc": "2.0",
-        "method": "abac_object.list",
+        "method": "abac_subject_attr.list",
         "params": [{
-            "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND object_id:room"
+            "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND subject_id:25a0c367-756a-42e1-ac5a-e7a2b6b64420"
         }],
         "id": "qwerty"
     }"#;
@@ -64,33 +74,18 @@ fn test_list() {
         "jsonrpc": "2.0",
         "result": [
             {
-                "key": "type",
+                "key": "role",
                 "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-                "object_id": "room",
-                "value": "room"
+                "subject_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
+                "value": "admin"
+            },
+            {
+                "key": "role",
+                "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                "subject_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
+                "value": "client"
             }
         ],
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
-
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "method": "abac_object.list",
-        "params": [{
-            "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND object_id:namespace"
-        }],
-        "id": "qwerty"
-    }"#;
-    let req = srv.get().body(json).unwrap();
-
-    let resp = srv.execute(req.send()).unwrap();
-    assert!(resp.status().is_success());
-
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "result": [],
         "id": "qwerty"
     }"#;
     assert_eq!(body, shared::strip_json(&json));

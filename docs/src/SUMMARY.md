@@ -1,3 +1,5 @@
+# Summary
+
 - [Overview](overview.md)
 - [API](api.md)
     - [Authentication](api.authentication.md)
@@ -11,6 +13,11 @@
             - [List](api.authentication.client-identity.list.md)
             - [Delete](api.authentication.client-identity.delete.md)
     - [Authorization](api.authorization.md)
+        - [ABAC Subject attribute](api.authorization.subject-attr.md)
+            - [Create](api.authorization.subject-attr.create.md)
+            - [Read](api.authorization.subject-attr.read.md)
+            - [Delete](api.authorization.subject-attr.delete.md)
+            - [List](api.authorization.subject-attr.list.md)
         - [ABAC Object attribute](api.authorization.object-attr.md)
             - [Create](api.authorization.object-attr.create.md)
             - [Read](api.authorization.object-attr.read.md)

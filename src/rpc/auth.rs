@@ -129,7 +129,8 @@ mod tests {
             .values((
                 abac_subject_attr::namespace_id.eq(namespace.id),
                 abac_subject_attr::subject_id.eq(account.id),
-                abac_subject_attr::value.eq("role:client".to_owned()),
+                abac_subject_attr::key.eq("role".to_owned()),
+                abac_subject_attr::value.eq("client".to_owned()),
             ))
             .get_result::<AbacSubjectAttr>(conn)
             .unwrap();

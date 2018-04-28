@@ -29,9 +29,10 @@ table! {
 }
 
 table! {
-    abac_subject_attr (namespace_id, value, subject_id) {
+    abac_subject_attr (namespace_id, subject_id, key, value) {
         namespace_id -> Uuid,
         subject_id -> Uuid,
+        key -> Text,
         value -> Text,
     }
 }
