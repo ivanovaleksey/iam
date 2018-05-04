@@ -35,12 +35,12 @@ fn with_existing_record() {
             .get_result::<Namespace>(&conn)
             .unwrap();
 
-        diesel::insert_into(abac_subject_attr::table)
+        diesel::insert_into(abac_action_attr::table)
             .values((
-                abac_subject_attr::namespace_id.eq(namespace.id),
-                abac_subject_attr::subject_id.eq(account_id),
-                abac_subject_attr::key.eq("role"),
-                abac_subject_attr::value.eq("client"),
+                abac_action_attr::namespace_id.eq(namespace.id),
+                abac_action_attr::action_id.eq("create"),
+                abac_action_attr::key.eq("access"),
+                abac_action_attr::value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();
@@ -48,12 +48,12 @@ fn with_existing_record() {
 
     let json = r#"{
         "jsonrpc": "2.0",
-        "method": "abac_subject_attr.read",
+        "method": "abac_action_attr.delete",
         "params": [{
             "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "subject_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "key": "role",
-            "value": "client"
+            "action_id": "create",
+            "key": "access",
+            "value": "*"
         }],
         "id": "qwerty"
     }"#;
@@ -66,10 +66,37 @@ fn with_existing_record() {
     let json = r#"{
         "jsonrpc": "2.0",
         "result": {
-            "key": "role",
+            "action_id": "create",
+            "key": "access",
             "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "subject_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "value": "client"
+            "value": "*"
+        },
+        "id": "qwerty"
+    }"#;
+    assert_eq!(body, shared::strip_json(&json));
+
+    let json = r#"{
+        "jsonrpc": "2.0",
+        "method": "abac_action_attr.delete",
+        "params": [{
+            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+            "action_id": "create",
+            "key": "access",
+            "value": "*"
+        }],
+        "id": "qwerty"
+    }"#;
+    let req = srv.get().body(json).unwrap();
+
+    let resp = srv.execute(req.send()).unwrap();
+    assert!(resp.status().is_success());
+
+    let body = srv.execute(resp.body()).unwrap();
+    let json = r#"{
+        "jsonrpc": "2.0",
+        "error": {
+            "code": 404,
+            "message": "NotFound"
         },
         "id": "qwerty"
     }"#;
@@ -106,12 +133,12 @@ fn with_nonexisting_record() {
 
     let json = r#"{
         "jsonrpc": "2.0",
-        "method": "abac_subject_attr.read",
+        "method": "abac_action_attr.delete",
         "params": [{
             "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "subject_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "key": "role",
-            "value": "client"
+            "action_id": "create",
+            "key": "access",
+            "value": "*"
         }],
         "id": "qwerty"
     }"#;

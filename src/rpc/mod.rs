@@ -5,11 +5,13 @@ use serde::de::{self, Deserialize, Deserializer};
 use std::{fmt, str};
 
 use actors::DbExecutor;
+use rpc::abac_action::Rpc as AbacActionRpc;
 use rpc::abac_object::Rpc as AbacObjectRpc;
 use rpc::abac_subject::Rpc as AbacSubjectRpc;
 use rpc::auth::Rpc as AuthRpc;
 use rpc::ping::Rpc as PingRpc;
 
+pub mod abac_action;
 pub mod abac_object;
 pub mod abac_subject;
 pub mod auth;
@@ -39,6 +41,9 @@ pub fn build_server() -> Server {
     io.extend_with(rpc.to_delegate());
 
     let rpc = abac_object::RpcImpl {};
+    io.extend_with(rpc.to_delegate());
+
+    let rpc = abac_action::RpcImpl {};
     io.extend_with(rpc.to_delegate());
 
     io

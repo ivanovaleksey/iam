@@ -95,8 +95,8 @@ fn with_existing_record() {
     let json = r#"{
         "jsonrpc": "2.0",
         "error": {
-            "code":404,
-            "message":"NotFound"
+            "code": 404,
+            "message": "NotFound"
         },
         "id": "qwerty"
     }"#;
@@ -151,8 +151,8 @@ fn with_nonexisting_record() {
     let json = r#"{
         "jsonrpc": "2.0",
         "error": {
-            "code":404,
-            "message":"NotFound"
+            "code": 404,
+            "message": "NotFound"
         },
         "id": "qwerty"
     }"#;

@@ -1,7 +1,8 @@
 table! {
-    abac_action_attr (namespace_id, value, action_id) {
+    abac_action_attr (namespace_id, action_id, key, value) {
         namespace_id -> Uuid,
         action_id -> Text,
+        key -> Text,
         value -> Text,
     }
 }

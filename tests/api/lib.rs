@@ -5,6 +5,7 @@ extern crate iam;
 extern crate serde_json;
 extern crate uuid;
 
+mod abac_action_attr;
 mod abac_object_attr;
 mod abac_subject_attr;
 mod authz;
