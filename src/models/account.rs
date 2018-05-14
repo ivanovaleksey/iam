@@ -10,3 +10,10 @@ pub struct Account {
     pub enabled: bool,
     pub constraints: Value,
 }
+
+#[derive(AsChangeset, Insertable, Debug)]
+#[table_name = "account"]
+pub struct NewAccount {
+    pub enabled: bool,
+    pub constraints: Value,
+}

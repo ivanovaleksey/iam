@@ -14,3 +14,11 @@ pub struct Namespace {
     pub enabled: bool,
     pub issued_at: NaiveDateTime,
 }
+
+#[derive(AsChangeset, Insertable, Debug)]
+#[table_name = "namespace"]
+pub struct NewNamespace {
+    pub label: String,
+    pub account_id: Uuid,
+    pub enabled: bool,
+}
