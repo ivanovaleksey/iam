@@ -40,7 +40,8 @@ fn test_authorization() {
             .values((
                 abac_subject_attr::namespace_id.eq(namespace.id),
                 abac_subject_attr::subject_id.eq(account.id),
-                abac_subject_attr::value.eq("role:client".to_owned()),
+                abac_subject_attr::key.eq("role".to_owned()),
+                abac_subject_attr::value.eq("client".to_owned()),
             ))
             .execute(&conn)
             .unwrap();
@@ -49,7 +50,8 @@ fn test_authorization() {
             .values((
                 abac_object_attr::namespace_id.eq(namespace.id),
                 abac_object_attr::object_id.eq("room"),
-                abac_object_attr::value.eq("type:room"),
+                abac_object_attr::key.eq("type"),
+                abac_object_attr::value.eq("room"),
             ))
             .execute(&conn)
             .unwrap();
@@ -58,7 +60,8 @@ fn test_authorization() {
             .values((
                 abac_action_attr::namespace_id.eq(namespace.id),
                 abac_action_attr::action_id.eq("create"),
-                abac_action_attr::value.eq("access:owner"),
+                abac_action_attr::key.eq("access"),
+                abac_action_attr::value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();
@@ -66,7 +69,8 @@ fn test_authorization() {
             .values((
                 abac_action_attr::namespace_id.eq(namespace.id),
                 abac_action_attr::action_id.eq("read"),
-                abac_action_attr::value.eq("access:owner"),
+                abac_action_attr::key.eq("access"),
+                abac_action_attr::value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();
@@ -74,10 +78,15 @@ fn test_authorization() {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();

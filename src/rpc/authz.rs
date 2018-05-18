@@ -59,19 +59,22 @@ pub fn call(conn: &PgConnection, msg: &Authz) -> Result<bool> {
     let query = diesel::select(diesel::dsl::exists(
         abac_policy::table
             .inner_join(
-                abac_subject_attr::table.on(abac_policy::subject_value
-                    .eq(abac_subject_attr::value)
-                    .and(abac_policy::namespace_id.eq(abac_subject_attr::namespace_id))),
+                abac_subject_attr::table.on(abac_policy::namespace_id
+                    .eq(abac_subject_attr::namespace_id)
+                    .and(abac_policy::subject_key.eq(abac_subject_attr::key))
+                    .and(abac_policy::subject_value.eq(abac_subject_attr::value))),
             )
             .inner_join(
-                abac_object_attr::table.on(abac_policy::object_value
-                    .eq(abac_object_attr::value)
-                    .and(abac_policy::namespace_id.eq(abac_object_attr::namespace_id))),
+                abac_object_attr::table.on(abac_policy::namespace_id
+                    .eq(abac_object_attr::namespace_id)
+                    .and(abac_policy::object_key.eq(abac_object_attr::key))
+                    .and(abac_policy::object_value.eq(abac_object_attr::value))),
             )
             .inner_join(
-                abac_action_attr::table.on(abac_policy::action_value
-                    .eq(abac_action_attr::value)
-                    .and(abac_policy::namespace_id.eq(abac_action_attr::namespace_id))),
+                abac_action_attr::table.on(abac_policy::namespace_id
+                    .eq(abac_action_attr::namespace_id)
+                    .and(abac_policy::action_key.eq(abac_action_attr::key))
+                    .and(abac_policy::action_value.eq(abac_action_attr::value))),
             )
             .filter(
                 abac_policy::not_before
@@ -87,7 +90,7 @@ pub fn call(conn: &PgConnection, msg: &Authz) -> Result<bool> {
             .filter(abac_subject_attr::subject_id.eq(&msg.subject))
             .filter(abac_object_attr::object_id.eq(&msg.object))
             .filter(abac_action_attr::action_id.eq(&msg.action))
-            .select(abac_policy::id)
+            .select(abac_policy::all_columns)
             .limit(1),
     ));
 
@@ -149,7 +152,8 @@ mod tests {
             .values((
                 abac_action_attr::namespace_id.eq(namespace.id),
                 abac_action_attr::action_id.eq("create"),
-                abac_action_attr::value.eq("access:owner"),
+                abac_action_attr::key.eq("access"),
+                abac_action_attr::value.eq("*"),
             ))
             .execute(conn)
             .unwrap();
@@ -157,7 +161,8 @@ mod tests {
             .values((
                 abac_action_attr::namespace_id.eq(namespace.id),
                 abac_action_attr::action_id.eq("read"),
-                abac_action_attr::value.eq("access:owner"),
+                abac_action_attr::key.eq("access"),
+                abac_action_attr::value.eq("*"),
             ))
             .execute(conn)
             .unwrap();
@@ -175,10 +180,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();
@@ -202,10 +212,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();
@@ -229,10 +244,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
             ))
             .execute(&conn)
             .unwrap();
@@ -266,10 +286,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
                 abac_policy::not_before.eq((diesel::dsl::now + 1.day()).nullable()),
             ))
             .execute(&conn)
@@ -295,10 +320,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
                 abac_policy::not_before.eq((diesel::dsl::now - 1.hour()).nullable()),
             ))
             .execute(&conn)
@@ -324,10 +354,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
                 abac_policy::expired_at.eq((diesel::dsl::now - 1.hour()).nullable()),
             ))
             .execute(&conn)
@@ -353,10 +388,15 @@ mod tests {
         diesel::insert_into(abac_policy::table)
             .values((
                 abac_policy::namespace_id.eq(namespace.id),
-                abac_policy::subject_value.eq("role:client"),
-                abac_policy::object_value.eq("type:room"),
-                abac_policy::action_value.eq("access:owner"),
-                abac_policy::issued_at.eq(diesel::dsl::now),
+                abac_policy::subject_namespace_id.eq(namespace.id),
+                abac_policy::subject_key.eq("role"),
+                abac_policy::subject_value.eq("client"),
+                abac_policy::object_namespace_id.eq(namespace.id),
+                abac_policy::object_key.eq("type"),
+                abac_policy::object_value.eq("room"),
+                abac_policy::action_namespace_id.eq(namespace.id),
+                abac_policy::action_key.eq("access"),
+                abac_policy::action_value.eq("*"),
                 abac_policy::expired_at.eq((diesel::dsl::now + 1.day()).nullable()),
             ))
             .execute(&conn)

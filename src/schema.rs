@@ -17,11 +17,16 @@ table! {
 }
 
 table! {
-    abac_policy (id) {
-        id -> Uuid,
+    abac_policy (namespace_id, subject_namespace_id, subject_key, subject_value, object_namespace_id, object_key, object_value, action_namespace_id, action_key, action_value) {
         namespace_id -> Uuid,
+        subject_namespace_id -> Uuid,
+        subject_key -> Text,
         subject_value -> Text,
+        object_namespace_id -> Uuid,
+        object_key -> Text,
         object_value -> Text,
+        action_namespace_id -> Uuid,
+        action_key -> Text,
         action_value -> Text,
         issued_at -> Timestamp,
         not_before -> Nullable<Timestamp>,
@@ -78,7 +83,6 @@ table! {
 
 joinable!(abac_action_attr -> namespace (namespace_id));
 joinable!(abac_object_attr -> namespace (namespace_id));
-joinable!(abac_policy -> namespace (namespace_id));
 joinable!(abac_subject_attr -> namespace (namespace_id));
 joinable!(identity -> namespace (provider));
 joinable!(namespace -> account (account_id));
