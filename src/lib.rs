@@ -71,7 +71,7 @@ pub fn call(req: HttpRequest<AppState>) -> FutureResponse<HttpResponse> {
             req.state()
                 .rpc_server
                 .handle_request(&msg, meta)
-                .map_err(actix_web::error::ErrorInternalServerError)
+                .map_err(|_| actix_web::error::ErrorInternalServerError(""))
                 .and_then(|resp| {
                     if let Some(resp) = resp {
                         Ok(HttpResponse::Ok().body(resp))
