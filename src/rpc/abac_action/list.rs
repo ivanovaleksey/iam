@@ -80,3 +80,83 @@ pub fn call(conn: &PgConnection, msg: abac_action::List) -> Result<Vec<AbacActio
 
     Ok(items)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use serde_json;
+
+    #[test]
+    fn deserialize_filter_with_all_fields() {
+        let filter = Filter {
+            namespace_id: Some(Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap()),
+            action_id: Some("create".to_owned()),
+            key: Some("access".to_owned()),
+        };
+        let req = Request::new(filter);
+        assert_eq!(
+            req,
+            serde_json::from_str(
+                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND action_id:create AND key:access"}"#
+            ).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_filter_without_namespace_id() {
+        let filter = Filter {
+            namespace_id: None,
+            action_id: Some("create".to_owned()),
+            key: Some("access".to_owned()),
+        };
+        let req = Request::new(filter);
+        assert_eq!(
+            req,
+            serde_json::from_str(r#"{"fq":"action_id:create AND key:access"}"#).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_filter_without_action_id() {
+        let filter = Filter {
+            namespace_id: Some(Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap()),
+            action_id: None,
+            key: Some("access".to_owned()),
+        };
+        let req = Request::new(filter);
+        assert_eq!(
+            req,
+            serde_json::from_str(
+                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:access"}"#
+            ).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_filter_without_key() {
+        let filter = Filter {
+            namespace_id: Some(Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap()),
+            action_id: Some("create".to_owned()),
+            key: None,
+        };
+        let req = Request::new(filter);
+        assert_eq!(
+            req,
+            serde_json::from_str(
+                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND action_id:create"}"#
+            ).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_empty_filter() {
+        let filter = Filter {
+            namespace_id: None,
+            action_id: None,
+            key: None,
+        };
+        let req = Request::new(filter);
+        assert_eq!(req, serde_json::from_str(r#"{"fq":""}"#).unwrap());
+    }
+}
