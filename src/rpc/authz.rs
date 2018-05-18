@@ -4,7 +4,7 @@ use futures::Future;
 use jsonrpc::{self, BoxFuture};
 use uuid::Uuid;
 
-use actors::db::auth::Auth;
+use actors::db::authz::Authz;
 use rpc;
 use rpc::error::Result;
 use schema::{abac_action_attr, abac_object_attr, abac_policy, abac_subject_attr};
@@ -13,8 +13,8 @@ build_rpc_trait! {
     pub trait Rpc {
         type Metadata;
 
-        #[rpc(meta, name = "auth")]
-        fn auth(&self, Self::Metadata, Request) -> BoxFuture<Response>;
+        #[rpc(meta, name = "authorize")]
+        fn authz(&self, Self::Metadata, Request) -> BoxFuture<Response>;
     }
 }
 
@@ -40,8 +40,8 @@ pub struct RpcImpl;
 impl Rpc for RpcImpl {
     type Metadata = rpc::Meta;
 
-    fn auth(&self, meta: rpc::Meta, req: Request) -> BoxFuture<Response> {
-        let msg = Auth::from(req);
+    fn authz(&self, meta: rpc::Meta, req: Request) -> BoxFuture<Response> {
+        let msg = Authz::from(req);
         let fut = meta.db
             .unwrap()
             .send(msg)
@@ -55,7 +55,7 @@ impl Rpc for RpcImpl {
     }
 }
 
-pub fn call(conn: &PgConnection, msg: &Auth) -> Result<bool> {
+pub fn call(conn: &PgConnection, msg: &Authz) -> Result<bool> {
     let query = diesel::select(diesel::dsl::exists(
         abac_policy::table
             .inner_join(
@@ -183,7 +183,7 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -210,7 +210,7 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -239,7 +239,7 @@ mod tests {
 
         let another_namespace = Uuid::new_v4();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id, another_namespace],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -247,7 +247,7 @@ mod tests {
         };
         assert_eq!(Ok(true), call(&conn, &msg));
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![another_namespace],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -275,7 +275,7 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -304,7 +304,7 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -333,7 +333,7 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),
@@ -362,7 +362,7 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        let msg = Auth {
+        let msg = Authz {
             namespace_ids: vec![namespace.id],
             subject: subject_attr.subject_id,
             object: "room".to_owned(),

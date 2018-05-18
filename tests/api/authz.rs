@@ -85,7 +85,7 @@ fn test_authorization() {
 
     let json = json!({
         "jsonrpc": "2.0",
-        "method": "auth",
+        "method": "authorize",
         "params": [{
             "namespace_ids": [namespace_id],
             "subject": account_id,
@@ -106,7 +106,7 @@ fn test_authorization() {
 
     let json = json!({
         "jsonrpc": "2.0",
-        "method": "auth",
+        "method": "authorize",
         "params": [{
             "namespace_ids": [namespace_id],
             "subject": account_id,
