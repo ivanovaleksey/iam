@@ -1,15 +1,10 @@
-extern crate actix_web;
-extern crate diesel;
-extern crate iam;
-#[macro_use]
-extern crate serde_json;
-extern crate uuid;
-
 use actix_web::HttpMessage;
+use diesel;
 use diesel::prelude::*;
+use serde_json;
 use uuid::Uuid;
 
-mod shared;
+use shared;
 
 #[test]
 fn test_authorization() {

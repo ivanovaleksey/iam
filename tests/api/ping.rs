@@ -1,9 +1,6 @@
-extern crate actix_web;
-extern crate iam;
-
 use actix_web::HttpMessage;
 
-mod shared;
+use shared;
 
 #[test]
 fn test_ping() {
