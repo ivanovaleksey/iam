@@ -1,7 +1,8 @@
 use actix::{Addr, Syn};
 use jsonrpc::{MetaIoHandler, Metadata};
 use serde::de::{self, Deserialize, Deserializer};
-use uuid::Uuid;
+use serde_json;
+use uuid::{self, Uuid};
 
 use std::{fmt, str};
 
@@ -96,6 +97,27 @@ where
         let filter = s.parse().map_err(de::Error::custom)?;
         let filter = ListRequestFilter(filter);
         Ok(filter)
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum ListRequestFilterError {
+    #[fail(display = "{}", _0)]
+    Json(#[cause] serde_json::Error),
+
+    #[fail(display = "{}", _0)]
+    Uuid(#[cause] uuid::ParseError),
+}
+
+impl From<uuid::ParseError> for ListRequestFilterError {
+    fn from(e: uuid::ParseError) -> Self {
+        ListRequestFilterError::Uuid(e)
+    }
+}
+
+impl From<serde_json::Error> for ListRequestFilterError {
+    fn from(e: serde_json::Error) -> Self {
+        ListRequestFilterError::Json(e)
     }
 }
 

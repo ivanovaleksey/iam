@@ -104,7 +104,7 @@ impl From<delete::Request> for Delete {
 
 #[derive(Debug)]
 pub struct List {
-    pub namespace_id: Option<Uuid>,
+    pub namespace_id: Uuid,
     pub subject_id: Option<Uuid>,
     pub key: Option<String>,
 }
