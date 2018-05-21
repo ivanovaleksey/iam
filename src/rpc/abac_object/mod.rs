@@ -13,16 +13,16 @@ build_rpc_trait! {
     pub trait Rpc {
         type Metadata;
 
-        #[rpc(meta, name = "abac_object.create")]
+        #[rpc(meta, name = "abac_object_attr.create")]
         fn create(&self, Self::Metadata, create::Request) -> BoxFuture<create::Response>;
 
-        #[rpc(meta, name = "abac_object.read")]
+        #[rpc(meta, name = "abac_object_attr.read")]
         fn read(&self, Self::Metadata, read::Request) -> BoxFuture<read::Response>;
 
-        #[rpc(meta, name = "abac_object.delete")]
+        #[rpc(meta, name = "abac_object_attr.delete")]
         fn delete(&self, Self::Metadata, delete::Request) -> BoxFuture<delete::Response>;
 
-        #[rpc(meta, name = "abac_object.list")]
+        #[rpc(meta, name = "abac_object_attr.list")]
         fn list(&self, Self::Metadata, list::Request) -> BoxFuture<list::Response>;
     }
 }
