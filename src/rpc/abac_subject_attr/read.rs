@@ -3,8 +3,7 @@ use diesel::PgConnection;
 
 use actors::db::abac_subject_attr;
 use models::AbacSubjectAttr;
-use rpc;
-use rpc::error::Result;
+use rpc::{self, error::Result};
 
 pub type Request = rpc::abac_subject_attr::create::Request;
 pub type Response = rpc::abac_subject_attr::create::Response;

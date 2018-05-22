@@ -5,6 +5,9 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Debug, Fail, PartialEq)]
 pub enum Error {
+    #[fail(display = "Forbidden")]
+    Forbidden,
+
     #[fail(display = "{}", _0)]
     Db(#[cause] diesel::result::Error),
 }
@@ -22,7 +25,7 @@ impl From<Error> for jsonrpc::Error {
                 diesel::result::Error::NotFound => 404,
                 _ => 422,
             },
-            _ => 500,
+            Error::Forbidden => 403,
         };
 
         jsonrpc::Error {

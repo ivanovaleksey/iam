@@ -7,8 +7,7 @@ use std::str;
 
 use actors::db::abac_subject_attr;
 use models::AbacSubjectAttr;
-use rpc;
-use rpc::error::Result;
+use rpc::{self, error::Result};
 
 pub type Request = rpc::ListRequest<Filter>;
 

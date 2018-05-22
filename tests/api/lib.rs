@@ -1,5 +1,6 @@
 extern crate actix_web;
 extern crate diesel;
+extern crate env_logger;
 extern crate iam;
 #[macro_use]
 extern crate serde_json;
