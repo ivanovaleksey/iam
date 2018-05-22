@@ -1,7 +1,7 @@
 use futures::Future;
 use jsonrpc::{self, BoxFuture};
 
-use actors::db::abac_subject;
+use actors::db::abac_subject_attr;
 use rpc;
 
 pub mod create;
@@ -33,8 +33,9 @@ impl Rpc for RpcImpl {
     type Metadata = rpc::Meta;
 
     fn create(&self, meta: rpc::Meta, req: create::Request) -> BoxFuture<create::Response> {
-        let msg = abac_subject::Create::from(req);
-        let fut = meta.db
+        let msg = abac_subject_attr::Create::from(req);
+        let fut = meta
+            .db
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())
@@ -50,8 +51,9 @@ impl Rpc for RpcImpl {
     }
 
     fn read(&self, meta: rpc::Meta, req: read::Request) -> BoxFuture<read::Response> {
-        let msg = abac_subject::Read::from(req);
-        let fut = meta.db
+        let msg = abac_subject_attr::Read::from(req);
+        let fut = meta
+            .db
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())
@@ -67,8 +69,9 @@ impl Rpc for RpcImpl {
     }
 
     fn delete(&self, meta: rpc::Meta, req: delete::Request) -> BoxFuture<delete::Response> {
-        let msg = abac_subject::Delete::from(req);
-        let fut = meta.db
+        let msg = abac_subject_attr::Delete::from(req);
+        let fut = meta
+            .db
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())
@@ -84,8 +87,9 @@ impl Rpc for RpcImpl {
     }
 
     fn list(&self, meta: rpc::Meta, req: list::Request) -> BoxFuture<list::Response> {
-        let msg = abac_subject::List::from(req);
-        let fut = meta.db
+        let msg = abac_subject_attr::List::from(req);
+        let fut = meta
+            .db
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())

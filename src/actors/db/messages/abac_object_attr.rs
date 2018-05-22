@@ -2,24 +2,24 @@ use actix::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::AbacSubjectAttr;
-use rpc::abac_subject::{create, delete, list, read};
+use models::AbacObjectAttr;
+use rpc::abac_object_attr::{create, delete, list, read};
 use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Create {
     pub namespace_id: Uuid,
-    pub subject_id: Uuid,
+    pub object_id: String,
     pub key: String,
     pub value: String,
 }
 
 impl Message for Create {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacObjectAttr>;
 }
 
 impl Handler<Create> for DbExecutor {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacObjectAttr>;
 
     fn handle(&mut self, msg: Create, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -31,7 +31,7 @@ impl From<create::Request> for Create {
     fn from(req: create::Request) -> Self {
         Create {
             namespace_id: req.namespace_id,
-            subject_id: req.subject_id,
+            object_id: req.object_id,
             key: req.key,
             value: req.value,
         }
@@ -41,17 +41,17 @@ impl From<create::Request> for Create {
 #[derive(Debug)]
 pub struct Read {
     pub namespace_id: Uuid,
-    pub subject_id: Uuid,
+    pub object_id: String,
     pub key: String,
     pub value: String,
 }
 
 impl Message for Read {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacObjectAttr>;
 }
 
 impl Handler<Read> for DbExecutor {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacObjectAttr>;
 
     fn handle(&mut self, msg: Read, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -63,7 +63,7 @@ impl From<read::Request> for Read {
     fn from(req: read::Request) -> Self {
         Read {
             namespace_id: req.namespace_id,
-            subject_id: req.subject_id,
+            object_id: req.object_id,
             key: req.key,
             value: req.value,
         }
@@ -73,17 +73,17 @@ impl From<read::Request> for Read {
 #[derive(Debug)]
 pub struct Delete {
     pub namespace_id: Uuid,
-    pub subject_id: Uuid,
+    pub object_id: String,
     pub key: String,
     pub value: String,
 }
 
 impl Message for Delete {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacObjectAttr>;
 }
 
 impl Handler<Delete> for DbExecutor {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacObjectAttr>;
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -95,7 +95,7 @@ impl From<delete::Request> for Delete {
     fn from(req: delete::Request) -> Self {
         Delete {
             namespace_id: req.namespace_id,
-            subject_id: req.subject_id,
+            object_id: req.object_id,
             key: req.key,
             value: req.value,
         }
@@ -105,16 +105,16 @@ impl From<delete::Request> for Delete {
 #[derive(Debug)]
 pub struct List {
     pub namespace_id: Option<Uuid>,
-    pub subject_id: Option<Uuid>,
+    pub object_id: Option<String>,
     pub key: Option<String>,
 }
 
 impl Message for List {
-    type Result = Result<Vec<AbacSubjectAttr>>;
+    type Result = Result<Vec<AbacObjectAttr>>;
 }
 
 impl Handler<List> for DbExecutor {
-    type Result = Result<Vec<AbacSubjectAttr>>;
+    type Result = Result<Vec<AbacObjectAttr>>;
 
     fn handle(&mut self, msg: List, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -127,7 +127,7 @@ impl From<list::Request> for List {
         let filter = req.filter.0;
         List {
             namespace_id: filter.namespace_id,
-            subject_id: filter.subject_id,
+            object_id: filter.object_id,
             key: filter.key,
         }
     }

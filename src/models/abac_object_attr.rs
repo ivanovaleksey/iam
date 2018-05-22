@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use actors::db::abac_object;
+use actors::db;
 use models::Namespace;
 use schema::abac_object_attr;
 
@@ -24,8 +24,8 @@ pub struct NewAbacObjectAttr {
     value: String,
 }
 
-impl From<abac_object::Create> for NewAbacObjectAttr {
-    fn from(msg: abac_object::Create) -> Self {
+impl From<db::abac_object_attr::Create> for NewAbacObjectAttr {
+    fn from(msg: db::abac_object_attr::Create) -> Self {
         NewAbacObjectAttr {
             namespace_id: msg.namespace_id,
             object_id: msg.object_id,

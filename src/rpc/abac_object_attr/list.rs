@@ -4,8 +4,8 @@ use uuid::{self, Uuid};
 
 use std::str;
 
-use actors::db::abac_action;
-use models::AbacActionAttr;
+use actors::db::abac_object_attr;
+use models::AbacObjectAttr;
 use rpc;
 use rpc::error::Result;
 
@@ -14,7 +14,7 @@ pub type Request = rpc::ListRequest<Filter>;
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Filter {
     pub namespace_id: Option<Uuid>,
-    pub action_id: Option<String>,
+    pub object_id: Option<String>,
     pub key: Option<String>,
 }
 
@@ -24,7 +24,7 @@ impl str::FromStr for Filter {
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         let mut filter = Filter {
             namespace_id: None,
-            action_id: None,
+            object_id: None,
             key: None,
         };
 
@@ -35,8 +35,8 @@ impl str::FromStr for Filter {
                     let uuid = Uuid::parse_str(v)?;
                     filter.namespace_id = Some(uuid);
                 }
-                (Some("action_id"), Some(v)) => {
-                    filter.action_id = Some(v.to_owned());
+                (Some("object_id"), Some(v)) => {
+                    filter.object_id = Some(v.to_owned());
                 }
                 (Some("key"), Some(v)) => {
                     filter.key = Some(v.to_owned());
@@ -50,26 +50,26 @@ impl str::FromStr for Filter {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Response(Vec<rpc::abac_action::read::Response>);
+pub struct Response(Vec<rpc::abac_object_attr::read::Response>);
 
-impl From<Vec<AbacActionAttr>> for Response {
-    fn from(items: Vec<AbacActionAttr>) -> Self {
+impl From<Vec<AbacObjectAttr>> for Response {
+    fn from(items: Vec<AbacObjectAttr>) -> Self {
         let items = items.into_iter().map(From::from).collect();
         Response(items)
     }
 }
 
-pub fn call(conn: &PgConnection, msg: abac_action::List) -> Result<Vec<AbacActionAttr>> {
-    use schema::abac_action_attr::dsl::*;
+pub fn call(conn: &PgConnection, msg: abac_object_attr::List) -> Result<Vec<AbacObjectAttr>> {
+    use schema::abac_object_attr::dsl::*;
 
-    let mut query = abac_action_attr.into_boxed();
+    let mut query = abac_object_attr.into_boxed();
 
     if let Some(namespace) = msg.namespace_id {
         query = query.filter(namespace_id.eq(namespace));
     }
 
-    if let Some(action) = msg.action_id {
-        query = query.filter(action_id.eq(action));
+    if let Some(object) = msg.object_id {
+        query = query.filter(object_id.eq(object));
     }
 
     if let Some(k) = msg.key {
@@ -91,14 +91,14 @@ mod tests {
     fn deserialize_filter_with_all_fields() {
         let filter = Filter {
             namespace_id: Some(Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap()),
-            action_id: Some("create".to_owned()),
-            key: Some("access".to_owned()),
+            object_id: Some("foo".to_owned()),
+            key: Some("type".to_owned()),
         };
         let req = Request::new(filter);
         assert_eq!(
             req,
             serde_json::from_str(
-                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND action_id:create AND key:access"}"#
+                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND object_id:foo AND key:type"}"#
             ).unwrap()
         );
     }
@@ -107,28 +107,28 @@ mod tests {
     fn deserialize_filter_without_namespace_id() {
         let filter = Filter {
             namespace_id: None,
-            action_id: Some("create".to_owned()),
-            key: Some("access".to_owned()),
+            object_id: Some("foo".to_owned()),
+            key: Some("type".to_owned()),
         };
         let req = Request::new(filter);
         assert_eq!(
             req,
-            serde_json::from_str(r#"{"fq":"action_id:create AND key:access"}"#).unwrap()
+            serde_json::from_str(r#"{"fq":"object_id:foo AND key:type"}"#).unwrap()
         );
     }
 
     #[test]
-    fn deserialize_filter_without_action_id() {
+    fn deserialize_filter_without_object_id() {
         let filter = Filter {
             namespace_id: Some(Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap()),
-            action_id: None,
-            key: Some("access".to_owned()),
+            object_id: None,
+            key: Some("type".to_owned()),
         };
         let req = Request::new(filter);
         assert_eq!(
             req,
             serde_json::from_str(
-                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:access"}"#
+                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:type"}"#
             ).unwrap()
         );
     }
@@ -137,14 +137,14 @@ mod tests {
     fn deserialize_filter_without_key() {
         let filter = Filter {
             namespace_id: Some(Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap()),
-            action_id: Some("create".to_owned()),
+            object_id: Some("foo".to_owned()),
             key: None,
         };
         let req = Request::new(filter);
         assert_eq!(
             req,
             serde_json::from_str(
-                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND action_id:create"}"#
+                r#"{"fq":"namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND object_id:foo"}"#
             ).unwrap()
         );
     }
@@ -153,7 +153,7 @@ mod tests {
     fn deserialize_empty_filter() {
         let filter = Filter {
             namespace_id: None,
-            action_id: None,
+            object_id: None,
             key: None,
         };
         let req = Request::new(filter);

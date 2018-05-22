@@ -42,7 +42,8 @@ impl Rpc for RpcImpl {
 
     fn authz(&self, meta: rpc::Meta, req: Request) -> BoxFuture<Response> {
         let msg = Authz::from(req);
-        let fut = meta.db
+        let fut = meta
+            .db
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())

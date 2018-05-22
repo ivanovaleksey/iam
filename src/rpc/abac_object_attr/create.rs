@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use diesel::{self, PgConnection};
 use uuid::Uuid;
 
-use actors::db::abac_object;
+use actors::db::abac_object_attr;
 use models::{AbacObjectAttr, NewAbacObjectAttr};
 use rpc::error::Result;
 
@@ -33,7 +33,7 @@ impl From<AbacObjectAttr> for Response {
     }
 }
 
-pub fn call(conn: &PgConnection, msg: abac_object::Create) -> Result<AbacObjectAttr> {
+pub fn call(conn: &PgConnection, msg: abac_object_attr::Create) -> Result<AbacObjectAttr> {
     use schema::abac_object_attr::dsl::*;
 
     let changeset = NewAbacObjectAttr::from(msg);
