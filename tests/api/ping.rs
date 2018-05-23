@@ -7,7 +7,7 @@ fn test_ping() {
     let shared::Server { mut srv, pool: _ } = shared::build_server();
 
     let req = srv
-        .get()
+        .post()
         .body(r#"{"jsonrpc":"2.0","method":"ping","params":[],"id":"qwerty"}"#)
         .unwrap();
 

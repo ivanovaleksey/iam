@@ -57,7 +57,7 @@ fn with_existing_record() {
         }],
         "id": "qwerty"
     }"#;
-    let req = srv.get().body(json).unwrap();
+    let req = srv.post().body(json).unwrap();
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -86,7 +86,7 @@ fn with_existing_record() {
         }],
         "id": "qwerty"
     }"#;
-    let req = srv.get().body(json).unwrap();
+    let req = srv.post().body(json).unwrap();
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -142,7 +142,7 @@ fn with_nonexisting_record() {
         }],
         "id": "qwerty"
     }"#;
-    let req = srv.get().body(json).unwrap();
+    let req = srv.post().body(json).unwrap();
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());

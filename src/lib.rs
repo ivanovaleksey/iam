@@ -43,7 +43,7 @@ pub struct AppState {
 pub fn build_app(database_url: String) -> App<AppState> {
     let manager = r2d2::ConnectionManager::<PgConnection>::new(database_url);
     let pool = r2d2::Pool::new(manager).unwrap();
-    App::with_state(build_app_state(pool)).resource("/", |r| r.h(call))
+    App::with_state(build_app_state(pool)).resource("/", |r| r.post().h(call))
 }
 
 pub fn build_app_state(pool: DbPool) -> AppState {

@@ -104,7 +104,7 @@ fn test_authorization() {
         "id": "qwerty",
     });
     let req = srv
-        .get()
+        .post()
         .body(serde_json::to_string(&json).unwrap())
         .unwrap();
 
@@ -126,7 +126,7 @@ fn test_authorization() {
         "id": "qwerty",
     });
     let req = srv
-        .get()
+        .post()
         .body(serde_json::to_string(&json).unwrap())
         .unwrap();
 
