@@ -1,6 +1,7 @@
 use actix::{Addr, Syn};
 use jsonrpc::{MetaIoHandler, Metadata};
 use serde::de::{self, Deserialize, Deserializer};
+use uuid::Uuid;
 
 use std::{fmt, str};
 
@@ -22,6 +23,13 @@ mod ping;
 #[derive(Clone, Default)]
 pub struct Meta {
     pub db: Option<Addr<Syn, DbExecutor>>,
+    pub subject: Option<Uuid>,
+}
+
+impl fmt::Debug for Meta {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Meta {{ subject: {:?} }}", self.subject)
+    }
 }
 
 impl Metadata for Meta {}

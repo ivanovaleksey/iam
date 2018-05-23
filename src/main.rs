@@ -11,6 +11,7 @@ use std::env;
 
 fn main() {
     env_logger::init();
+    iam::settings::init().expect("Failed to initialize settings");
 
     let database_url = env::var("DATABASE_URL").unwrap();
 
