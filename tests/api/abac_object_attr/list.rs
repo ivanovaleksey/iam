@@ -1,6 +1,5 @@
 use diesel;
 use diesel::prelude::*;
-use uuid::Uuid;
 
 use iam::models::*;
 use iam::schema::*;
@@ -12,16 +11,10 @@ mod with_namespace_ownership {
     use actix_web::HttpMessage;
 
     fn before_each(conn: &PgConnection) -> (Account, Namespace) {
-        let account_id = Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
-
         conn.begin_test_transaction()
             .expect("Failed to begin transaction");
 
-        let account = diesel::insert_into(account::table)
-            .values((account::id.eq(account_id), account::enabled.eq(true)))
-            .get_result::<Account>(conn)
-            .unwrap();
-
+        let account = shared::db::create_iam_account(conn);
         let namespace = shared::db::create_iam_namespace(conn, account.id);
 
         shared::db::grant_namespace_ownership(&conn, namespace.id, account.id);
@@ -175,16 +168,10 @@ mod without_namespace_ownership {
     use actix_web::HttpMessage;
 
     fn before_each(conn: &PgConnection) -> (Account, Namespace) {
-        let account_id = Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
-
         conn.begin_test_transaction()
             .expect("Failed to begin transaction");
 
-        let account = diesel::insert_into(account::table)
-            .values((account::id.eq(account_id), account::enabled.eq(true)))
-            .get_result::<Account>(conn)
-            .unwrap();
-
+        let account = shared::db::create_iam_account(conn);
         let namespace = shared::db::create_iam_namespace(conn, account.id);
 
         (account, namespace)

@@ -5,6 +5,16 @@ use uuid::Uuid;
 use iam::models::*;
 use iam::schema::*;
 
+pub fn create_iam_account(conn: &PgConnection) -> Account {
+    diesel::insert_into(account::table)
+        .values((
+            account::id.eq(Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap()),
+            account::enabled.eq(true),
+        ))
+        .get_result(conn)
+        .unwrap()
+}
+
 pub fn create_iam_namespace(conn: &PgConnection, account_id: Uuid) -> Namespace {
     diesel::insert_into(namespace::table)
         .values((
