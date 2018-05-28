@@ -13,7 +13,6 @@ mod with_namespace_ownership {
 
     fn before_each(conn: &PgConnection) -> (Account, Namespace) {
         let account_id = Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
-        let namespace_id = Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap();
 
         conn.begin_test_transaction()
             .expect("Failed to begin transaction");
@@ -23,17 +22,9 @@ mod with_namespace_ownership {
             .get_result::<Account>(conn)
             .unwrap();
 
-        let namespace = diesel::insert_into(namespace::table)
-            .values((
-                namespace::id.eq(namespace_id),
-                namespace::label.eq("iam.ng.services"),
-                namespace::account_id.eq(account.id),
-                namespace::enabled.eq(true),
-            ))
-            .get_result::<Namespace>(conn)
-            .unwrap();
+        let namespace = shared::db::create_iam_namespace(conn, account.id);
 
-        shared::grant_namespace_ownership(&conn, namespace.id, account.id);
+        shared::db::grant_namespace_ownership(&conn, namespace.id, account.id);
 
         (account, namespace)
     }
@@ -185,7 +176,6 @@ mod without_namespace_ownership {
 
     fn before_each(conn: &PgConnection) -> (Account, Namespace) {
         let account_id = Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
-        let namespace_id = Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap();
 
         conn.begin_test_transaction()
             .expect("Failed to begin transaction");
@@ -195,15 +185,7 @@ mod without_namespace_ownership {
             .get_result::<Account>(conn)
             .unwrap();
 
-        let namespace = diesel::insert_into(namespace::table)
-            .values((
-                namespace::id.eq(namespace_id),
-                namespace::label.eq("iam.ng.services"),
-                namespace::account_id.eq(account.id),
-                namespace::enabled.eq(true),
-            ))
-            .get_result::<Namespace>(conn)
-            .unwrap();
+        let namespace = shared::db::create_iam_namespace(conn, account.id);
 
         (account, namespace)
     }
