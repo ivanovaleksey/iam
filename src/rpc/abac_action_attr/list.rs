@@ -49,15 +49,7 @@ impl str::FromStr for Filter {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct Response(Vec<rpc::abac_action_attr::read::Response>);
-
-impl From<Vec<AbacActionAttr>> for Response {
-    fn from(items: Vec<AbacActionAttr>) -> Self {
-        let items = items.into_iter().map(From::from).collect();
-        Response(items)
-    }
-}
+pub type Response = rpc::ListResponse<rpc::abac_action_attr::read::Response>;
 
 pub fn call(conn: &PgConnection, msg: abac_action_attr::List) -> Result<Vec<AbacActionAttr>> {
     use schema::abac_action_attr::dsl::*;

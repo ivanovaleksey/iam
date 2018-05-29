@@ -187,9 +187,7 @@ fn reject_call(call: &jsonrpc::Call) -> impl Future<Item = Option<jsonrpc::Outpu
         jsonrpc::Call::Notification(notification) => {
             jsonrpc::Output::from(Err(err), jsonrpc::Id::Null, notification.jsonrpc)
         }
-        jsonrpc::Call::Invalid(_id) => {
-            jsonrpc::Output::from(Err(err), jsonrpc::Id::Null, None)
-        }
+        jsonrpc::Call::Invalid(_id) => jsonrpc::Output::from(Err(err), jsonrpc::Id::Null, None),
     };
 
     future::ok(Some(output))

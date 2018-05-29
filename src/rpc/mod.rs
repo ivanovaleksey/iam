@@ -98,3 +98,16 @@ where
         Ok(filter)
     }
 }
+
+#[derive(Debug, Serialize)]
+pub struct ListResponse<T>(Vec<T>);
+
+impl<T, I> From<Vec<I>> for ListResponse<T>
+where
+    T: From<I>,
+{
+    fn from(items: Vec<I>) -> Self {
+        let items = items.into_iter().map(From::from).collect();
+        ListResponse(items)
+    }
+}
