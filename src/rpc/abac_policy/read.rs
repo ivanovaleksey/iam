@@ -1,8 +1,8 @@
-use futures::Future;
+use futures::future::{self, Future};
 use jsonrpc;
 use uuid::Uuid;
 
-use actors::db::abac_policy;
+use actors::db::{abac_policy, authz::Authz};
 use rpc;
 
 #[derive(Debug, Deserialize)]
@@ -22,13 +22,28 @@ pub struct Request {
 pub type Response = rpc::abac_policy::create::Response;
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
-    let msg = abac_policy::find::Find::from(req);
-    meta.db
-        .unwrap()
-        .send(msg)
-        .map_err(|_| jsonrpc::Error::internal_error())
-        .and_then(|res| {
-            debug!("abac policy find res: {:?}", res);
-            Ok(Response::from(res?))
+    let subject = meta.subject.ok_or(rpc::error::Error::Forbidden.into());
+    future::result(subject)
+        .and_then({
+            let db = meta.db.clone().unwrap();
+            let namespace_id = req.namespace_id;
+            move |subject_id| {
+                let msg = Authz::execute_namespace_message(namespace_id, subject_id);
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(rpc::ensure_authorized)
+            }
+        })
+        .and_then({
+            let db = meta.db.unwrap();
+            move |_| {
+                let msg = abac_policy::find::Find::from(req);
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        debug!("abac policy find res: {:?}", res);
+                        Ok(Response::from(res?))
+                    })
+            }
         })
 }

@@ -15,6 +15,17 @@ pub struct Authz {
     pub action: String,
 }
 
+impl Authz {
+    pub fn execute_namespace_message(namespace_id: Uuid, subject_id: Uuid) -> Self {
+        Authz {
+            namespace_ids: vec![namespace_id],
+            subject: subject_id,
+            object: format!("namespace.{}", namespace_id),
+            action: "execute".to_owned(),
+        }
+    }
+}
+
 impl Message for Authz {
     type Result = Result<bool>;
 }

@@ -34,7 +34,7 @@ mod with_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("create"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -44,7 +44,7 @@ mod with_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("read"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -55,7 +55,7 @@ mod with_namespace_ownership {
             "jsonrpc": "2.0",
             "method": "abac_action_attr.list",
             "params": [{
-                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:access"
+                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:action"
             }],
             "id": "qwerty"
         }"#;
@@ -70,19 +70,19 @@ mod with_namespace_ownership {
             "result": [
                 {
                     "action_id": "create",
-                    "key": "access",
+                    "key": "action",
                     "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
                     "value": "*"
                 },
                 {
                     "action_id": "execute",
-                    "key": "access",
+                    "key": "action",
                     "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
                     "value": "*"
                 },
                 {
                     "action_id": "read",
-                    "key": "access",
+                    "key": "action",
                     "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
                     "value": "*"
                 }
@@ -104,7 +104,7 @@ mod with_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("create"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -114,7 +114,7 @@ mod with_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("read"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -125,7 +125,7 @@ mod with_namespace_ownership {
             "jsonrpc": "2.0",
             "method": "abac_action_attr.list",
             "params": [{
-                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:access"
+                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:action"
             }],
             "id": "qwerty"
         }"#;
@@ -173,7 +173,7 @@ mod without_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("create"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -183,7 +183,7 @@ mod without_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("read"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -194,7 +194,7 @@ mod without_namespace_ownership {
             "jsonrpc": "2.0",
             "method": "abac_action_attr.list",
             "params": [{
-                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:access"
+                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:action"
             }],
             "id": "qwerty"
         }"#;
@@ -227,7 +227,7 @@ mod without_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("create"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -237,7 +237,7 @@ mod without_namespace_ownership {
                 .values((
                     abac_action_attr::namespace_id.eq(namespace.id),
                     abac_action_attr::action_id.eq("read"),
-                    abac_action_attr::key.eq("access"),
+                    abac_action_attr::key.eq("action"),
                     abac_action_attr::value.eq("*"),
                 ))
                 .execute(&conn)
@@ -248,7 +248,7 @@ mod without_namespace_ownership {
             "jsonrpc": "2.0",
             "method": "abac_action_attr.list",
             "params": [{
-                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:access"
+                "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND key:action"
             }],
             "id": "qwerty"
         }"#;

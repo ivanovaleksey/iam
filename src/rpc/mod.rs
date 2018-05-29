@@ -1,5 +1,5 @@
 use actix::{Addr, Syn};
-use jsonrpc::{MetaIoHandler, Metadata};
+use jsonrpc::{self, MetaIoHandler, Metadata};
 use serde::de::{self, Deserialize, Deserializer};
 use serde_json;
 use uuid::{self, Uuid};
@@ -146,5 +146,13 @@ where
     fn from(items: Vec<I>) -> Self {
         let items = items.into_iter().map(From::from).collect();
         ListResponse(items)
+    }
+}
+
+pub fn ensure_authorized(res: error::Result<bool>) -> Result<(), jsonrpc::Error> {
+    if res? {
+        Ok(())
+    } else {
+        Err(error::Error::Forbidden)?
     }
 }
