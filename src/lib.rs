@@ -22,6 +22,10 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate uuid;
 
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
+
 use actix::prelude::*;
 use actix_web::{App, AsyncResponder, FutureResponse, HttpMessage, HttpRequest, HttpResponse};
 use diesel::{r2d2, PgConnection};

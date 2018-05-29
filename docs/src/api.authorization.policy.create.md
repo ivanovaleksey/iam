@@ -63,7 +63,7 @@ expired_at           | timestamp | _null_     | –
         "action_namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
         "action_key": "action",
         "action_value": "*",
-        "issued_at": "2018-05-29T07:15:00",
+        "created_at": "2018-05-29T07:15:00",
         "not_before": null,
         "expired_at": null
     },

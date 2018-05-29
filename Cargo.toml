@@ -29,3 +29,6 @@ pretty_assertions = "*"
 [[test]]
 name = "api_tests"
 path = "tests/api/lib.rs"
+
+[patch.crates-io]
+diesel = { git = "https://github.com/ivanovaleksey/diesel", branch = "composite-pk-with-10-columns" }

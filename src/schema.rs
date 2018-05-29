@@ -28,7 +28,7 @@ table! {
         action_namespace_id -> Uuid,
         action_key -> Text,
         action_value -> Text,
-        issued_at -> Timestamp,
+        created_at -> Timestamp,
         not_before -> Nullable<Timestamp>,
         expired_at -> Nullable<Timestamp>,
     }
