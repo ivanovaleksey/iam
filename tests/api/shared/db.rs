@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -22,6 +23,7 @@ pub fn create_iam_namespace(conn: &PgConnection, account_id: Uuid) -> Namespace 
             namespace::label.eq("iam.ng.services"),
             namespace::account_id.eq(account_id),
             namespace::enabled.eq(true),
+            namespace::created_at.eq(NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 0)),
         ))
         .get_result(conn)
         .unwrap()

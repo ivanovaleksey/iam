@@ -12,7 +12,7 @@ mod with_namespace_ownership {
         conn.begin_test_transaction()
             .expect("Failed to begin transaction");
 
-        let account = shared::db::create_iam_account(conn);
+        let account = shared::db::create_iam_account(&conn);
         let namespace = shared::db::create_iam_namespace(conn, account.id);
 
         shared::db::grant_namespace_ownership(&conn, namespace.id, account.id);
@@ -105,7 +105,7 @@ mod without_namespace_ownership {
         conn.begin_test_transaction()
             .expect("Failed to begin transaction");
 
-        let account = shared::db::create_iam_account(conn);
+        let account = shared::db::create_iam_account(&conn);
         let namespace = shared::db::create_iam_namespace(conn, account.id);
 
         (account, namespace)
