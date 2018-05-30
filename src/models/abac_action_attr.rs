@@ -18,10 +18,10 @@ pub struct AbacActionAttr {
 #[derive(AsChangeset, Insertable, Debug)]
 #[table_name = "abac_action_attr"]
 pub struct NewAbacActionAttr {
-    namespace_id: Uuid,
-    action_id: String,
-    key: String,
-    value: String,
+    pub namespace_id: Uuid,
+    pub action_id: String,
+    pub key: String,
+    pub value: String,
 }
 
 impl From<db::abac_action_attr::Create> for NewAbacActionAttr {

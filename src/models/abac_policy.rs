@@ -26,3 +26,20 @@ pub struct AbacPolicy {
     pub not_before: Option<NaiveDateTime>,
     pub expired_at: Option<NaiveDateTime>,
 }
+
+#[derive(AsChangeset, Insertable, Debug)]
+#[table_name = "abac_policy"]
+pub struct NewAbacPolicy {
+    pub namespace_id: Uuid,
+    pub subject_namespace_id: Uuid,
+    pub subject_key: String,
+    pub subject_value: String,
+    pub object_namespace_id: Uuid,
+    pub object_key: String,
+    pub object_value: String,
+    pub action_namespace_id: Uuid,
+    pub action_key: String,
+    pub action_value: String,
+    pub not_before: Option<NaiveDateTime>,
+    pub expired_at: Option<NaiveDateTime>,
+}
