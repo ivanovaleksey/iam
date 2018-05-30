@@ -33,8 +33,7 @@ mod with_namespace_ownership {
             .get_result::<Namespace>(conn)
             .unwrap();
 
-        use abac_subject_attr::grant_namespace_ownership;
-        grant_namespace_ownership(&conn, namespace.id, account.id);
+        shared::grant_namespace_ownership(&conn, namespace.id, account.id);
 
         (account, namespace)
     }
