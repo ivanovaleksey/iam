@@ -56,7 +56,7 @@ mod with_namespace_ownership {
             },
             "id": "qwerty"
         }"#;
-        assert_eq!(body, shared::strip_json(&resp_json));
+        assert_eq!(body, shared::strip_json(resp_json));
     }
 
     #[test]
@@ -93,7 +93,7 @@ mod with_namespace_ownership {
             },
             "id": "qwerty"
         }"#;
-        assert_eq!(body, shared::strip_json(&resp_json));
+        assert_eq!(body, shared::strip_json(resp_json));
     }
 }
 
@@ -145,7 +145,7 @@ mod without_namespace_ownership {
             },
             "id": "qwerty"
         }"#;
-        assert_eq!(body, shared::strip_json(&resp_json));
+        assert_eq!(body, shared::strip_json(resp_json));
     }
 
     #[test]
@@ -182,6 +182,6 @@ mod without_namespace_ownership {
             },
             "id": "qwerty"
         }"#;
-        assert_eq!(body, shared::strip_json(&resp_json));
+        assert_eq!(body, shared::strip_json(resp_json));
     }
 }
