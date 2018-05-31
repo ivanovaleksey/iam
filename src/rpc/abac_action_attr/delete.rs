@@ -1,20 +1,48 @@
-use diesel::prelude::*;
-use diesel::{self, PgConnection};
+use futures::future::{self, Future};
+use jsonrpc;
 
-use actors::db::abac_action_attr;
-use models::AbacActionAttr;
+use actors::db::{abac_action_attr, authz::Authz};
 use rpc;
-use rpc::error::Result;
 
 pub type Request = rpc::abac_action_attr::create::Request;
 pub type Response = rpc::abac_action_attr::create::Response;
 
-pub fn call(conn: &PgConnection, msg: abac_action_attr::Delete) -> Result<AbacActionAttr> {
-    use schema::abac_action_attr::dsl::*;
+pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+    let subject = meta.subject.ok_or(rpc::error::Error::Forbidden.into());
+    future::result(subject)
+        .and_then({
+            let db = meta.db.clone().unwrap();
+            let namespace_id = req.namespace_id;
+            move |subject_id| {
+                let msg = Authz {
+                    namespace_ids: vec![namespace_id],
+                    subject: subject_id,
+                    object: format!("namespace.{}", namespace_id),
+                    action: "execute".to_owned(),
+                };
 
-    let pk = (msg.namespace_id, msg.action_id, msg.key, msg.value);
-    let target = abac_action_attr.find(pk);
-    let object = diesel::delete(target).get_result(conn)?;
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        if res? {
+                            Ok(())
+                        } else {
+                            Err(rpc::error::Error::Forbidden)?
+                        }
+                    })
+            }
+        })
+        .and_then({
+            let db = meta.db.unwrap();
+            move |_| {
+                let msg = abac_action_attr::delete::Delete::from(req);
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        debug!("abac action delete res: {:?}", res);
 
-    Ok(object)
+                        Ok(Response::from(res?))
+                    })
+            }
+        })
 }
