@@ -1,10 +1,10 @@
-use diesel::prelude::*;
-use diesel::{self, PgConnection};
+use futures::future::{self, Future};
+use jsonrpc;
 use uuid::Uuid;
 
-use actors::db::abac_subject_attr;
-use models::{AbacSubjectAttr, NewAbacSubjectAttr};
-use rpc::error::Result;
+use actors::db::{abac_subject_attr, authz::Authz};
+use models::AbacSubjectAttr;
+use rpc;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
@@ -33,13 +33,42 @@ impl From<AbacSubjectAttr> for Response {
     }
 }
 
-pub fn call(conn: &PgConnection, msg: abac_subject_attr::Create) -> Result<AbacSubjectAttr> {
-    use schema::abac_subject_attr::dsl::*;
+pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+    let subject = meta.subject.ok_or(rpc::error::Error::Forbidden.into());
+    future::result(subject)
+        .and_then({
+            let db = meta.db.clone().unwrap();
+            let namespace_id = req.namespace_id;
+            move |subject_id| {
+                let msg = Authz {
+                    namespace_ids: vec![namespace_id],
+                    subject: subject_id,
+                    object: format!("namespace.{}", namespace_id),
+                    action: "execute".to_owned(),
+                };
 
-    let changeset = NewAbacSubjectAttr::from(msg);
-    let attr = diesel::insert_into(abac_subject_attr)
-        .values(changeset)
-        .get_result(conn)?;
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        if res? {
+                            Ok(())
+                        } else {
+                            Err(rpc::error::Error::Forbidden)?
+                        }
+                    })
+            }
+        })
+        .and_then({
+            let db = meta.db.unwrap();
+            move |_| {
+                let msg = abac_subject_attr::insert::Insert::from(req);
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        debug!("abac subject insert res: {:?}", res);
 
-    Ok(attr)
+                        Ok(Response::from(res?))
+                    })
+            }
+        })
 }
