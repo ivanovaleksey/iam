@@ -24,8 +24,8 @@ pub struct NewAbacSubjectAttr {
     pub value: String,
 }
 
-impl From<db::abac_subject_attr::Create> for NewAbacSubjectAttr {
-    fn from(msg: db::abac_subject_attr::Create) -> Self {
+impl From<db::abac_subject_attr::insert::Insert> for NewAbacSubjectAttr {
+    fn from(msg: db::abac_subject_attr::insert::Insert) -> Self {
         NewAbacSubjectAttr {
             namespace_id: msg.namespace_id,
             subject_id: msg.subject_id,

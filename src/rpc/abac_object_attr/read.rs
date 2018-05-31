@@ -1,19 +1,48 @@
-use diesel::prelude::*;
-use diesel::PgConnection;
+use futures::future::{self, Future};
+use jsonrpc;
 
-use actors::db::abac_object_attr;
-use models::AbacObjectAttr;
+use actors::db::{abac_object_attr, authz::Authz};
 use rpc;
-use rpc::error::Result;
 
 pub type Request = rpc::abac_object_attr::create::Request;
 pub type Response = rpc::abac_object_attr::create::Response;
 
-pub fn call(conn: &PgConnection, msg: abac_object_attr::Read) -> Result<AbacObjectAttr> {
-    use schema::abac_object_attr::dsl::*;
+pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+    let subject = meta.subject.ok_or(rpc::error::Error::Forbidden.into());
+    future::result(subject)
+        .and_then({
+            let db = meta.db.clone().unwrap();
+            let namespace_id = req.namespace_id;
+            move |subject_id| {
+                let msg = Authz {
+                    namespace_ids: vec![namespace_id],
+                    subject: subject_id,
+                    object: format!("namespace.{}", namespace_id),
+                    action: "execute".to_owned(),
+                };
 
-    let pk = (msg.namespace_id, msg.object_id, msg.key, msg.value);
-    let object = abac_object_attr.find(pk).get_result(conn)?;
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        if res? {
+                            Ok(())
+                        } else {
+                            Err(rpc::error::Error::Forbidden)?
+                        }
+                    })
+            }
+        })
+        .and_then({
+            let db = meta.db.unwrap();
+            move |_| {
+                let msg = abac_object_attr::find::Find::from(req);
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        debug!("abac object find res: {:?}", res);
 
-    Ok(object)
+                        Ok(Response::from(res?))
+                    })
+            }
+        })
 }

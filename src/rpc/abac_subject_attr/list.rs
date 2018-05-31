@@ -1,13 +1,12 @@
-use diesel::prelude::*;
-use diesel::PgConnection;
+use futures::future::{self, Future};
+use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
 use std::str;
 
-use actors::db::abac_subject_attr;
-use models::AbacSubjectAttr;
-use rpc::{self, error::Result};
+use actors::db::{abac_subject_attr, authz::Authz};
+use rpc;
 
 pub type Request = rpc::ListRequest<Filter>;
 
@@ -55,24 +54,44 @@ impl str::FromStr for Filter {
 
 pub type Response = rpc::ListResponse<rpc::abac_subject_attr::read::Response>;
 
-pub fn call(conn: &PgConnection, msg: abac_subject_attr::List) -> Result<Vec<AbacSubjectAttr>> {
-    use schema::abac_subject_attr::dsl::*;
+pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+    let subject = meta.subject.ok_or(rpc::error::Error::Forbidden.into());
+    future::result(subject)
+        .and_then({
+            let db = meta.db.clone().unwrap();
+            let namespace_id = req.filter.0.namespace_id;
+            move |subject_id| {
+                let msg = Authz {
+                    namespace_ids: vec![namespace_id],
+                    subject: subject_id,
+                    object: format!("namespace.{}", namespace_id),
+                    action: "execute".to_owned(),
+                };
 
-    let mut query = abac_subject_attr.into_boxed();
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        if res? {
+                            Ok(())
+                        } else {
+                            Err(rpc::error::Error::Forbidden)?
+                        }
+                    })
+            }
+        })
+        .and_then({
+            let db = meta.db.unwrap();
+            move |_| {
+                let msg = abac_subject_attr::select::Select::from(req);
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(|res| {
+                        debug!("abac subject select res: {:?}", res);
 
-    query = query.filter(namespace_id.eq(msg.namespace_id));
-
-    if let Some(subject) = msg.subject_id {
-        query = query.filter(subject_id.eq(subject));
-    }
-
-    if let Some(k) = msg.key {
-        query = query.filter(key.eq(k));
-    }
-
-    let items = query.load(conn)?;
-
-    Ok(items)
+                        Ok(Response::from(res?))
+                    })
+            }
+        })
 }
 
 #[cfg(test)]
