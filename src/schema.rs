@@ -68,7 +68,7 @@ table! {
         label -> Text,
         account_id -> Uuid,
         enabled -> Bool,
-        issued_at -> Timestamp,
+        created_at -> Timestamp,
     }
 }
 

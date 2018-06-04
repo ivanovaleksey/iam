@@ -11,6 +11,7 @@ use rpc::abac_action_attr::Rpc as AbacActionRpc;
 use rpc::abac_object_attr::Rpc as AbacObjectRpc;
 use rpc::abac_subject_attr::Rpc as AbacSubjectRpc;
 use rpc::authz::Rpc as AuthRpc;
+use rpc::namespace::Rpc as NamespaceRpc;
 use rpc::ping::Rpc as PingRpc;
 
 pub mod abac_action_attr;
@@ -18,6 +19,7 @@ pub mod abac_object_attr;
 pub mod abac_subject_attr;
 pub mod authz;
 pub mod error;
+pub mod namespace;
 mod ping;
 
 // TODO: remove Default on new jsonrpc_core version
@@ -53,6 +55,9 @@ pub fn build_server() -> Server {
     io.extend_with(rpc.to_delegate());
 
     let rpc = abac_action_attr::RpcImpl {};
+    io.extend_with(rpc.to_delegate());
+
+    let rpc = namespace::RpcImpl {};
     io.extend_with(rpc.to_delegate());
 
     io

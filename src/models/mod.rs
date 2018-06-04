@@ -3,7 +3,7 @@ pub use models::abac_object_attr::{AbacObjectAttr, NewAbacObjectAttr};
 pub use models::abac_policy::{AbacPolicy, NewAbacPolicy};
 pub use models::abac_subject_attr::{AbacSubjectAttr, NewAbacSubjectAttr};
 pub use models::account::Account;
-pub use models::namespace::Namespace;
+pub use models::namespace::{Namespace, NewNamespace};
 
 mod abac_action_attr;
 mod abac_object_attr;

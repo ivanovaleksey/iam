@@ -54,5 +54,7 @@ fn init() {
 }
 
 pub fn strip_json(json: &str) -> String {
-    json.replace('\n', "").replace(' ', "")
+    json.replace('\n', "")
+        .replace("  ", "")
+        .replace("\": ", "\":")
 }
