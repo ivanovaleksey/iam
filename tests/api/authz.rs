@@ -103,10 +103,7 @@ fn test_authorization() {
         }],
         "id": "qwerty",
     });
-    let req = srv
-        .post()
-        .body(serde_json::to_string(&json).unwrap())
-        .unwrap();
+    let req = shared::build_anonymous_request(&srv, serde_json::to_string(&json).unwrap());
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -125,10 +122,7 @@ fn test_authorization() {
         }],
         "id": "qwerty",
     });
-    let req = srv
-        .post()
-        .body(serde_json::to_string(&json).unwrap())
-        .unwrap();
+    let req = shared::build_anonymous_request(&srv, serde_json::to_string(&json).unwrap());
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
