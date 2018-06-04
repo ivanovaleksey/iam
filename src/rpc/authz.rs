@@ -60,19 +60,19 @@ pub fn call(conn: &PgConnection, msg: &Authz) -> Result<bool> {
     let query = diesel::select(diesel::dsl::exists(
         abac_policy::table
             .inner_join(
-                abac_subject_attr::table.on(abac_policy::namespace_id
+                abac_subject_attr::table.on(abac_policy::subject_namespace_id
                     .eq(abac_subject_attr::namespace_id)
                     .and(abac_policy::subject_key.eq(abac_subject_attr::key))
                     .and(abac_policy::subject_value.eq(abac_subject_attr::value))),
             )
             .inner_join(
-                abac_object_attr::table.on(abac_policy::namespace_id
+                abac_object_attr::table.on(abac_policy::object_namespace_id
                     .eq(abac_object_attr::namespace_id)
                     .and(abac_policy::object_key.eq(abac_object_attr::key))
                     .and(abac_policy::object_value.eq(abac_object_attr::value))),
             )
             .inner_join(
-                abac_action_attr::table.on(abac_policy::namespace_id
+                abac_action_attr::table.on(abac_policy::action_namespace_id
                     .eq(abac_action_attr::namespace_id)
                     .and(abac_policy::action_key.eq(abac_action_attr::key))
                     .and(abac_policy::action_value.eq(abac_action_attr::value))),
