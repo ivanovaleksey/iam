@@ -56,9 +56,8 @@ table! {
         provider -> Uuid,
         label -> Text,
         uid -> Text,
-        issuer_id -> Uuid,
         account_id -> Uuid,
-        issued_at -> Timestamp,
+        created_at -> Timestamp,
     }
 }
 
