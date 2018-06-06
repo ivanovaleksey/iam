@@ -2,6 +2,7 @@ use futures::future::{self, Future};
 use jsonrpc;
 
 use actors::db::identity;
+use models::identity::PrimaryKey;
 use rpc;
 
 pub type Request = rpc::identity::create::Request;
@@ -41,33 +42,49 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     .map_err(|_| jsonrpc::Error::internal_error())
                     .and_then(|res| {
                         let items = res?;
-                        if items.len() > 1 {
-                            Ok(identity)
+                        Ok(items.len())
+                    })
+                    .and_then(move |count| {
+                        use future::Either;
+
+                        let pk = PrimaryKey {
+                            provider: identity.provider,
+                            label: identity.label,
+                            uid: identity.uid,
+                        };
+
+                        if count == 1 {
+                            // It is the last user's identity.
+                            // Remove both identity and account.
+
+                            let msg = identity::delete::Delete::IdentityWithAccount(pk);
+                            let f = db
+                                .send(msg)
+                                .map_err(|_| jsonrpc::Error::internal_error())
+                                .and_then(|res| {
+                                    debug!("identity delete with account res: {:?}", res);
+
+                                    let iden = res.map_err(rpc::error::Error::Db)?;
+                                    Ok(iden)
+                                });
+
+                            Either::A(f)
                         } else {
-                            Err(jsonrpc::Error {
-                                message: "Cannot delete last identity".to_owned(),
-                                code: jsonrpc::ErrorCode::ServerError(999),
-                                data: None,
-                            })
+                            let msg = identity::delete::Delete::Identity(pk);
+                            let f = db
+                                .send(msg)
+                                .map_err(|_| jsonrpc::Error::internal_error())
+                                .and_then(|res| {
+                                    debug!("identity delete res: {:?}", res);
+
+                                    let iden = res.map_err(rpc::error::Error::Db)?;
+                                    Ok(iden)
+                                });
+
+                            Either::B(f)
                         }
                     })
             }
         })
-        .and_then({
-            let db = meta.db.unwrap();
-            move |identity| {
-                let msg = identity::delete::Delete {
-                    provider: identity.provider,
-                    label: identity.label,
-                    uid: identity.uid,
-                };
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        debug!("identity delete res: {:?}", res);
-
-                        Ok(Response::from(res?))
-                    })
-            }
-        })
+        .and_then({ |identity| Ok(Response::from(identity)) })
 }

@@ -79,15 +79,50 @@ fn delete_last_identity() {
     assert!(resp.status().is_success());
 
     let body = srv.execute(resp.body()).unwrap();
+    let resp_template = r#"{
+        "jsonrpc": "2.0",
+        "result": {
+            "account_id": "USER_ACCOUNT_ID",
+            "created_at": "2018-06-02T08:40:00",
+            "label": "oauth2",
+            "provider": "FOXFORD_NAMESPACE_ID",
+            "uid": "FOXFORD_USER_ID"
+        },
+        "id": "qwerty"
+    }"#;
+    let resp_json = resp_template
+        .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+        .replace("FOXFORD_USER_ID", &FOXFORD_USER_ID.to_string())
+        .replace("USER_ACCOUNT_ID", &USER_ACCOUNT_ID.to_string());
+    assert_eq!(body, shared::strip_json(&resp_json));
+
+    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let resp = srv.execute(req.send()).unwrap();
+    assert!(resp.status().is_success());
+
+    let body = srv.execute(resp.body()).unwrap();
     let resp_json = r#"{
         "jsonrpc": "2.0",
         "error": {
-            "code": 999,
-            "message": "Cannot delete last identity"
+            "code": 404,
+            "message": "NotFound"
         },
         "id": "qwerty"
     }"#;
     assert_eq!(body, shared::strip_json(resp_json));
+
+    let conn = pool.get().expect("Failed to get connection from pool");
+    let result = account::table
+        .find(*USER_ACCOUNT_ID)
+        .get_result::<Account>(&conn);
+
+    println!("{:?}", result);
+
+    if let Err(diesel::result::Error::NotFound) = result {
+        assert!(true);
+    } else {
+        assert!(false);
+    }
 }
 
 #[test]
@@ -161,18 +196,7 @@ fn delete_nonlast_identity() {
         .replace("USER_ACCOUNT_ID", &USER_ACCOUNT_ID.to_string());
     assert_eq!(body, shared::strip_json(&resp_json));
 
-    let req_json = json!({
-        "jsonrpc": "2.0",
-        "method": "identity.delete",
-        "params": [{
-            "provider": netology_namespace_id,
-            "label": "oauth2",
-            "uid": netology_user_id,
-        }],
-        "id": "qwerty"
-    });
     let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
-
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
 
@@ -180,10 +204,17 @@ fn delete_nonlast_identity() {
     let resp_json = r#"{
         "jsonrpc": "2.0",
         "error": {
-            "code": 999,
-            "message": "Cannot delete last identity"
+            "code": 404,
+            "message": "NotFound"
         },
         "id": "qwerty"
     }"#;
     assert_eq!(body, shared::strip_json(resp_json));
+
+    let conn = pool.get().expect("Failed to get connection from pool");
+    let result = account::table
+        .find(*USER_ACCOUNT_ID)
+        .get_result::<Account>(&conn);
+
+    assert!(result.is_ok());
 }
