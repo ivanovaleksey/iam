@@ -1,32 +1,40 @@
 # Read
 
-Returns the account.
-
-**URI**
+### Method
 
 ```
-GET /accounts/${KEY}
+account.read
 ```
 
-**URI parameters**
+### Params
 
-Name      | Type   | Default    | Description
---------- | ------ | ---------- | ------------------
-KEY       | string | _required_ | Account identifier or `me`
+Name  | Type   | Default    | Description
+----- | ------ | ---------- | ------------------
+id    | uuid   | _required_ | -
 
-**Response**
+### Example
 
-Account
+#### Request
 
-**Example**
-
-```bash
-curl -fsSL \
-    -XPOST ${ENDPOINT}/accounts/me \
-    -H"Authorization: Bearer ${ACCESS_TOKEN}" \
-    | jq '.'
- 
+```json
 {
-  "id": "9074b6aa-a980-44e9-8973-29501900aa79"
+    "jsonrpc": "2.0",
+    "method": "account.read",
+    "params": [{
+        "id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420"
+    }],
+    "id": "qwerty"
+}
+```
+
+#### Response
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420"
+    },
+    "id": "qwerty"
 }
 ```

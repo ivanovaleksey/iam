@@ -4,7 +4,7 @@
 
 An identity belongs to an account. We would like to avoid situations where an identity could be linked to a user account without user permission. For that reason `account_id` is intentionally omitted within payload.  
 
-`(provider, label, uid)` triple is used to find existing identity. If there isn't one a new account is created. An identity is then linked to the created account. 
+`(provider, label, uid)` triple is used to find existing identity. If an identity isn't found a new account is created. An identity is then linked to the created account. 
  
 This endpoint is considered to be used only one time to generate initial _account & identity_ pair.  
 Then a user can link new identities via Authentication API.
@@ -14,8 +14,6 @@ Then a user can link new identities via Authentication API.
 ```
 identity.create
 ```
-
-identity.create должен быть использован только для создания новых аккаунтов (первой identity)
 
 ### Params
 
