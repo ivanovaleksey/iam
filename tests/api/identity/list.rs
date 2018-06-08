@@ -4,7 +4,7 @@ use diesel;
 use diesel::prelude::*;
 use uuid::Uuid;
 
-use iam::models::*;
+use iam::models::prelude::*;
 use iam::schema::*;
 
 use shared;

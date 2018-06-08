@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use serde_json;
 use uuid::Uuid;
 
-use iam::models::*;
+use iam::models::prelude::*;
 use iam::schema::*;
 
 use shared;
