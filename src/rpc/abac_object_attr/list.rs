@@ -69,13 +69,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
 
                 db.send(msg)
                     .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        if res? {
-                            Ok(())
-                        } else {
-                            Err(rpc::error::Error::Forbidden)?
-                        }
-                    })
+                    .and_then(rpc::ensure_authorized)
             }
         })
         .and_then({

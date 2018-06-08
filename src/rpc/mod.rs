@@ -1,4 +1,5 @@
 use actix::{Addr, Syn};
+use diesel::QueryResult;
 use jsonrpc::{self, MetaIoHandler, Metadata};
 use serde::de::{self, Deserialize, Deserializer};
 use serde_json;
@@ -149,8 +150,8 @@ where
     }
 }
 
-pub fn ensure_authorized(res: error::Result<bool>) -> Result<(), jsonrpc::Error> {
-    if res? {
+pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), jsonrpc::Error> {
+    if res.map_err(error::Error::Db)? {
         Ok(())
     } else {
         Err(error::Error::Forbidden)?

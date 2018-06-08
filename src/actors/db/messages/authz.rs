@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use rpc::authz::Request;
-use rpc::error::Result;
 use schema::{abac_action_attr, abac_object_attr, abac_policy, abac_subject_attr};
 
 #[derive(Debug)]
@@ -27,11 +26,11 @@ impl Authz {
 }
 
 impl Message for Authz {
-    type Result = Result<bool>;
+    type Result = QueryResult<bool>;
 }
 
 impl Handler<Authz> for DbExecutor {
-    type Result = Result<bool>;
+    type Result = QueryResult<bool>;
 
     fn handle(&mut self, msg: Authz, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().expect("Failed to get a connection from pool");
@@ -50,7 +49,7 @@ impl From<Request> for Authz {
     }
 }
 
-fn call(conn: &PgConnection, msg: &Authz) -> Result<bool> {
+fn call(conn: &PgConnection, msg: &Authz) -> QueryResult<bool> {
     let query = diesel::select(diesel::dsl::exists(
         abac_policy::table
             .inner_join(

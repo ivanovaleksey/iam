@@ -43,9 +43,9 @@ impl Rpc for RpcImpl {
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())
-            .and_then(|res| match res {
-                Ok(res) => Ok(Response::new(res)),
-                Err(e) => Err(e.into()),
+            .and_then(|res| {
+                let res = res.map_err(rpc::error::Error::Db)?;
+                Ok(Response::new(res))
             });
 
         Box::new(fut)
