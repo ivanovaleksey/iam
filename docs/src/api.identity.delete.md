@@ -1,12 +1,9 @@
-# Create
+# Delete
 
 ### Description
 
-As [described](api.identity.create.html#description) using `identity.create` generates new _account & identity_ pair.
-Sequential calling `identity.create` & `identity.delete` would result in multiple accounts that might be not linked to any identities.
-
-To avoid that it is not allowed to remove the last identity (an error would be returned).
-This case should be considered as removing the whole account, and thus `account.delete` should be used instead.  
+As mentioned in [Account API](api.account.html#description) deleting the last account identity results in deleting that account altogether.  
+So, deleting all account identities one by one is a common way to delete an account itself.
 
 ### Method
 

@@ -1,9 +1,23 @@
 use chrono::NaiveDateTime;
+use diesel;
 use uuid::Uuid;
 
 use actors::db;
 use models::Namespace;
 use schema::identity;
+
+#[derive(Debug)]
+pub struct PrimaryKey {
+    pub provider: Uuid,
+    pub label: String,
+    pub uid: String,
+}
+
+impl PrimaryKey {
+    pub fn as_tuple(&self) -> <&Identity as diesel::Identifiable>::Id {
+        (&self.provider, &self.label, &self.uid)
+    }
+}
 
 #[derive(Associations, Identifiable, Queryable, Debug, Deserialize)]
 #[belongs_to(Namespace, foreign_key = "provider")]

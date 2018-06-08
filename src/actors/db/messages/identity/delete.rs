@@ -1,48 +1,50 @@
 use actix::prelude::*;
 use diesel::{self, prelude::*};
-use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::Identity;
-use rpc::error::Result;
-use rpc::identity::delete;
+use models::{identity::PrimaryKey, Identity};
 
 #[derive(Debug)]
-pub struct Delete {
-    pub provider: Uuid,
-    pub label: String,
-    pub uid: String,
+pub enum Delete {
+    Identity(PrimaryKey),
+    IdentityWithAccount(PrimaryKey),
 }
 
 impl Message for Delete {
-    type Result = Result<Identity>;
+    type Result = QueryResult<Identity>;
 }
 
 impl Handler<Delete> for DbExecutor {
-    type Result = Result<Identity>;
+    type Result = QueryResult<Identity>;
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
-    }
-}
-
-impl From<delete::Request> for Delete {
-    fn from(req: delete::Request) -> Self {
-        Delete {
-            provider: req.provider,
-            label: req.label,
-            uid: req.uid,
+        match msg {
+            Delete::Identity(pk) => delete_identity(conn, pk),
+            Delete::IdentityWithAccount(pk) => delete_identity_with_account(conn, pk),
         }
     }
 }
 
-fn call(conn: &PgConnection, msg: Delete) -> Result<Identity> {
+fn delete_identity(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
     use schema::identity::dsl::*;
 
-    let pk = (msg.provider, msg.label, msg.uid);
-    let target = identity.find(pk);
+    let target = identity.find(pk.as_tuple());
     let object = diesel::delete(target).get_result(conn)?;
 
     Ok(object)
+}
+
+fn delete_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
+    use schema::{account, identity};
+
+    conn.transaction::<_, _, _>(|| {
+        let target = identity::table.find(pk.as_tuple());
+        let identity = diesel::delete(target).get_result::<Identity>(conn)?;
+
+        let target = account::table.find(identity.account_id);
+        diesel::delete(target).execute(conn)?;
+
+        Ok(identity)
+    })
 }
