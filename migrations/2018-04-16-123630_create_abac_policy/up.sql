@@ -9,7 +9,7 @@ create table abac_policy (
   action_namespace_id uuid not null,
   action_key text not null,
   action_value text not null,
-  issued_at timestamp not null default now(),
+  created_at timestamp not null default now(),
   not_before timestamp,
   expired_at timestamp,
 
