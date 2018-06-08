@@ -120,7 +120,7 @@ fn without_filter() {
         }],
         "id": "qwerty"
     }"#;
-    let req = shared::build_rpc_request(&srv, req_json.to_owned());
+    let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -183,7 +183,7 @@ fn with_filter_by_provider() {
     }"#;
     let req_json = req_template.replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
 
-    let req = shared::build_rpc_request(&srv, req_json.to_owned());
+    let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -239,7 +239,7 @@ fn with_filter_by_provider_and_account() {
         .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
         .replace("USER_2_ACCOUNT_ID", &USER_2_ACCOUNT_ID.to_string());
 
-    let req = shared::build_rpc_request(&srv, req_json.to_owned());
+    let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());

@@ -55,7 +55,7 @@ fn create_identity_first_time() {
         }],
         "id": "qwerty"
     });
-    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let req = shared::build_auth_request(&srv, serde_json::to_string(&req_json).unwrap(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -112,7 +112,7 @@ fn create_identity_second_time() {
         }],
         "id": "qwerty"
     });
-    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let req = shared::build_auth_request(&srv, serde_json::to_string(&req_json).unwrap(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());

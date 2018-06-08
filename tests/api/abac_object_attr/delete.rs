@@ -52,7 +52,7 @@ mod with_namespace_ownership {
             }],
             "id": "qwerty"
         }"#;
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         assert!(resp.status().is_success());
@@ -70,7 +70,7 @@ mod with_namespace_ownership {
         }"#;
         assert_eq!(body, shared::strip_json(resp_json));
 
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         assert!(resp.status().is_success());
@@ -107,7 +107,7 @@ mod with_namespace_ownership {
             }],
             "id": "qwerty"
         }"#;
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         assert!(resp.status().is_success());
@@ -206,7 +206,7 @@ mod without_namespace_ownership {
             }],
             "id": "qwerty"
         }"#;
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         assert!(resp.status().is_success());
@@ -243,7 +243,7 @@ mod without_namespace_ownership {
             }],
             "id": "qwerty"
         }"#;
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         assert!(resp.status().is_success());

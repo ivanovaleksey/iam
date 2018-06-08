@@ -2,6 +2,7 @@ extern crate actix_web;
 extern crate chrono;
 extern crate diesel;
 extern crate env_logger;
+extern crate frank_jwt as jwt;
 extern crate iam;
 extern crate jsonrpc_core as jsonrpc;
 #[macro_use]

@@ -73,7 +73,7 @@ fn delete_last_identity() {
         }],
         "id": "qwerty"
     });
-    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let req = shared::build_auth_request(&srv, serde_json::to_string(&req_json).unwrap(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -96,7 +96,7 @@ fn delete_last_identity() {
         .replace("USER_ACCOUNT_ID", &USER_ACCOUNT_ID.to_string());
     assert_eq!(body, shared::strip_json(&resp_json));
 
-    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let req = shared::build_auth_request(&srv, serde_json::to_string(&req_json).unwrap(), None);
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
 
@@ -173,7 +173,7 @@ fn delete_nonlast_identity() {
         }],
         "id": "qwerty"
     });
-    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let req = shared::build_auth_request(&srv, serde_json::to_string(&req_json).unwrap(), None);
 
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
@@ -196,7 +196,7 @@ fn delete_nonlast_identity() {
         .replace("USER_ACCOUNT_ID", &USER_ACCOUNT_ID.to_string());
     assert_eq!(body, shared::strip_json(&resp_json));
 
-    let req = shared::build_rpc_request(&srv, serde_json::to_string(&req_json).unwrap());
+    let req = shared::build_auth_request(&srv, serde_json::to_string(&req_json).unwrap(), None);
     let resp = srv.execute(req.send()).unwrap();
     assert!(resp.status().is_success());
 

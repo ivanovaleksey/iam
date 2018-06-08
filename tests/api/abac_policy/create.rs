@@ -48,21 +48,21 @@ mod with_namespace_ownership {
             }],
             "id": "qwerty"
         }"#;
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
             let policy: AbacPolicy = serde_json::from_value(resp.result).unwrap();
 
-            assert_eq!(policy.namespace_id, *shared::db::IAM_NAMESPACE_ID);
-            assert_eq!(policy.subject_namespace_id, *shared::db::IAM_NAMESPACE_ID);
+            assert_eq!(policy.namespace_id, *shared::IAM_NAMESPACE_ID);
+            assert_eq!(policy.subject_namespace_id, *shared::IAM_NAMESPACE_ID);
             assert_eq!(policy.subject_key, "role".to_owned());
             assert_eq!(policy.subject_value, "client".to_owned());
-            assert_eq!(policy.object_namespace_id, *shared::db::IAM_NAMESPACE_ID);
+            assert_eq!(policy.object_namespace_id, *shared::IAM_NAMESPACE_ID);
             assert_eq!(policy.object_key, "type".to_owned());
             assert_eq!(policy.object_value, "identity".to_owned());
-            assert_eq!(policy.action_namespace_id, *shared::db::IAM_NAMESPACE_ID);
+            assert_eq!(policy.action_namespace_id, *shared::IAM_NAMESPACE_ID);
             assert_eq!(policy.action_key, "action".to_owned());
             assert_eq!(policy.action_value, "*".to_owned());
         } else {
@@ -152,7 +152,7 @@ mod without_namespace_ownership {
             }],
             "id": "qwerty"
         }"#;
-        let req = shared::build_rpc_request(&srv, req_json.to_owned());
+        let req = shared::build_auth_request(&srv, req_json.to_owned(), None);
 
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();

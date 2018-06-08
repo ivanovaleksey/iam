@@ -6,16 +6,14 @@ use uuid::Uuid;
 use iam::models::*;
 use iam::schema::*;
 
-lazy_static! {
-    pub static ref IAM_ACCOUNT_ID: Uuid =
-        Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
-    pub static ref IAM_NAMESPACE_ID: Uuid =
-        Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap();
-}
+use shared;
 
 pub fn create_iam_account(conn: &PgConnection) -> Account {
     diesel::insert_into(account::table)
-        .values((account::id.eq(*IAM_ACCOUNT_ID), account::enabled.eq(true)))
+        .values((
+            account::id.eq(*shared::IAM_ACCOUNT_ID),
+            account::enabled.eq(true),
+        ))
         .get_result(conn)
         .unwrap()
 }
@@ -23,7 +21,7 @@ pub fn create_iam_account(conn: &PgConnection) -> Account {
 pub fn create_iam_namespace(conn: &PgConnection, account_id: Uuid) -> Namespace {
     diesel::insert_into(namespace::table)
         .values((
-            namespace::id.eq(*IAM_NAMESPACE_ID),
+            namespace::id.eq(*shared::IAM_NAMESPACE_ID),
             namespace::label.eq("iam.ng.services"),
             namespace::account_id.eq(account_id),
             namespace::enabled.eq(true),

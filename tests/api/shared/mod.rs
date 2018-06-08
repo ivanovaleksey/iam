@@ -1,8 +1,16 @@
 use actix_web::{self, http, test::TestServer};
 use diesel;
 use iam;
+use uuid::Uuid;
 
 pub mod db;
+
+lazy_static! {
+    pub static ref IAM_ACCOUNT_ID: Uuid =
+        Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
+    pub static ref IAM_NAMESPACE_ID: Uuid =
+        Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap();
+}
 
 pub struct Server {
     pub srv: TestServer,
@@ -31,19 +39,47 @@ pub fn build_server() -> Server {
     Server { srv, pool }
 }
 
-pub fn build_rpc_request(srv: &TestServer, json: String) -> actix_web::client::ClientRequest {
-    srv.post()
-        .header(http::header::AUTHORIZATION, "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyNWEwYzM2Ny03NTZhLTQyZTEtYWM1YS1lN2EyYjZiNjQ0MjAifQ==.MEYCIQDEUAevIcmf-MK7dPZpUPoPxemOTKZZeUYC7NbGDsI-9gIhALfQKFCoc761wS7CcIy0nDa54-QhiIAGeW1ObWv_GxDz")
-        .content_type("application/json")
-        .body(json)
-        .unwrap()
+pub fn build_auth_request(
+    srv: &TestServer,
+    json: String,
+    account_id: Option<Uuid>,
+) -> actix_web::client::ClientRequest {
+    let account_id = account_id.or(Some(*IAM_ACCOUNT_ID));
+    build_rpc_request(srv, json, account_id)
 }
 
 pub fn build_anonymous_request(srv: &TestServer, json: String) -> actix_web::client::ClientRequest {
-    srv.post()
-        .content_type("application/json")
-        .body(json)
-        .unwrap()
+    build_rpc_request(srv, json, None)
+}
+
+fn build_rpc_request(
+    srv: &TestServer,
+    json: String,
+    account_id: Option<Uuid>,
+) -> actix_web::client::ClientRequest {
+    let mut builder = srv.post();
+    builder.content_type("application/json");
+
+    if let Some(account_id) = account_id {
+        use iam::settings::SETTINGS;
+        use jwt;
+
+        let header = json!({});
+        let payload = json!({
+            "sub": account_id,
+        });
+        let settings = SETTINGS.read().unwrap();
+        let token = jwt::encode(
+            header,
+            &settings.private_key,
+            &payload,
+            jwt::Algorithm::ES256,
+        ).unwrap();
+        let auth_header = format!("Bearer {}", token);
+        builder.header(http::header::AUTHORIZATION, auth_header);
+    }
+
+    builder.body(json).unwrap()
 }
 
 fn init() {
