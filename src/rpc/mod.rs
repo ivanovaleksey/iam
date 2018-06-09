@@ -162,3 +162,7 @@ pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), jsonrpc::Error> {
         Err(error::Error::Forbidden)?
     }
 }
+
+pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, jsonrpc::Error> {
+    subject.ok_or_else(|| error::Error::Forbidden.into())
+}

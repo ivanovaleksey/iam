@@ -22,7 +22,7 @@ pub struct Request {
 pub type Response = rpc::abac_policy::create::Response;
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
-    let subject = meta.subject.ok_or(rpc::error::Error::Forbidden.into());
+    let subject = rpc::forbid_anonymous(meta.subject);
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
