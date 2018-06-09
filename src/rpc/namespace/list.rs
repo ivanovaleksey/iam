@@ -23,7 +23,7 @@ impl str::FromStr for Filter {
         let mut is_account_present = false;
 
         for part in s.split(" AND ") {
-            let mut kv = part.splitn(2, ":");
+            let mut kv = part.splitn(2, ':');
             match (kv.next(), kv.next()) {
                 (Some("account_id"), Some(v)) => {
                     let uuid = Uuid::parse_str(v)?;

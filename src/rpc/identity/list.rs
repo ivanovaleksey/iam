@@ -22,7 +22,7 @@ impl str::FromStr for Filter {
         let mut filter = Filter::default();
 
         for part in s.split(" AND ") {
-            let mut kv = part.splitn(2, ":");
+            let mut kv = part.splitn(2, ':');
             match (kv.next(), kv.next()) {
                 (Some("provider"), Some(v)) => {
                     let uuid = Uuid::parse_str(v)?;
