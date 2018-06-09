@@ -26,6 +26,7 @@ build_rpc_trait! {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct RpcImpl;
 
 impl Rpc for RpcImpl {

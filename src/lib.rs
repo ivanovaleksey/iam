@@ -1,3 +1,5 @@
+#![deny(missing_copy_implementations)]
+
 extern crate actix;
 extern crate actix_web;
 extern crate chrono;

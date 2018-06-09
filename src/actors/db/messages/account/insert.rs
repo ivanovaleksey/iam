@@ -4,7 +4,7 @@ use diesel::{self, prelude::*};
 use actors::DbExecutor;
 use models::{Account, NewAccount};
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Insert {
     pub enabled: bool,
 }

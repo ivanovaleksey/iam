@@ -7,7 +7,7 @@ use models::Namespace;
 use rpc::error::Result;
 use rpc::namespace::list;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Select {
     pub account_id: Uuid,
 }

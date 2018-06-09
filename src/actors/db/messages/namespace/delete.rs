@@ -7,7 +7,7 @@ use models::Namespace;
 use rpc::error::Result;
 use rpc::namespace::delete;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Delete {
     pub id: Uuid,
 }

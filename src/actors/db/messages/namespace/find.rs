@@ -7,7 +7,7 @@ use models::Namespace;
 use rpc::error::Result;
 use rpc::namespace::read;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Find {
     pub id: Uuid,
 }

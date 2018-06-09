@@ -7,7 +7,7 @@ use models::AbacPolicy;
 use rpc::abac_policy::list;
 use rpc::error::Result;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Select {
     pub namespace_id: Uuid,
 }

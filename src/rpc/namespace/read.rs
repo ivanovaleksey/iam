@@ -5,7 +5,7 @@ use uuid::Uuid;
 use actors::db::namespace;
 use rpc;
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Request {
     pub id: Uuid,
 }

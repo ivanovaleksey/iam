@@ -10,7 +10,7 @@ use rpc;
 
 pub type Request = rpc::ListRequest<Filter>;
 
-#[derive(Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
 pub struct Filter {
     pub namespace_id: Uuid,
 }

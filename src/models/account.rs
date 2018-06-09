@@ -12,7 +12,7 @@ pub struct Account {
     pub constraints: Value,
 }
 
-#[derive(AsChangeset, Insertable, Debug)]
+#[derive(Clone, Copy, AsChangeset, Insertable, Debug)]
 #[table_name = "account"]
 pub struct NewAccount {
     pub enabled: bool,

@@ -6,7 +6,7 @@ use actors::DbExecutor;
 use models::Account;
 use rpc::account::read;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Find {
     pub id: Uuid,
 }

@@ -7,7 +7,7 @@ use models::Identity;
 use rpc::error::Result;
 use rpc::identity::list;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Select {
     pub provider: Option<Uuid>,
     pub account_id: Option<Uuid>,

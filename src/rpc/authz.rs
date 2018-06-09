@@ -22,7 +22,7 @@ pub struct Request {
     pub action: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Response(bool);
 
 impl Response {
@@ -31,6 +31,7 @@ impl Response {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct RpcImpl;
 
 impl Rpc for RpcImpl {

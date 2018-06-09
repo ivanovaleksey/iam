@@ -6,12 +6,12 @@ use actors::db;
 use models::Account;
 use rpc;
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Request {
     pub id: Uuid,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Response {
     pub id: Uuid,
 }
