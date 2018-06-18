@@ -13,6 +13,7 @@ build_rpc_trait! {
     }
 }
 
+#[allow(missing_debug_implementations)]
 pub struct RpcImpl;
 
 impl Rpc for RpcImpl {

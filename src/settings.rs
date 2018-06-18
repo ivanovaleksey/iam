@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::RwLock;
 
 lazy_static! {
+    #[allow(missing_debug_implementations)]
     pub static ref SETTINGS: RwLock<Settings> = RwLock::new(Settings::default());
 }
 

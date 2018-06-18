@@ -1,3 +1,5 @@
+#![deny(missing_debug_implementations)]
+
 extern crate actix;
 extern crate actix_web;
 extern crate chrono;
@@ -42,6 +44,7 @@ pub mod settings;
 
 pub type DbPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
+#[derive(Debug)]
 pub struct AppState {
     pub rpc_server: Server,
     pub rpc_meta: Meta,
