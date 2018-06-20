@@ -1,5 +1,6 @@
 use config::{Config, File};
 use failure;
+use uuid::Uuid;
 
 use std::fs;
 use std::io::Read;
@@ -37,4 +38,6 @@ pub struct Settings {
     #[serde(skip_deserializing)]
     pub private_key: String,
     pub private_key_path: PathBuf,
+
+    pub iam_namespace_id: Uuid,
 }

@@ -10,7 +10,7 @@ use std::{fmt, str};
 use actors::DbExecutor;
 use rpc::abac_action_attr::Rpc as AbacActionRpc;
 use rpc::abac_object_attr::Rpc as AbacObjectRpc;
-use rpc::abac_policy::Rpc as AbacPolicyRpc;
+//use rpc::abac_policy::Rpc as AbacPolicyRpc;
 use rpc::abac_subject_attr::Rpc as AbacSubjectRpc;
 use rpc::account::Rpc as AccountRpc;
 use rpc::authz::Rpc as AuthRpc;
@@ -20,7 +20,7 @@ use rpc::ping::Rpc as PingRpc;
 
 pub mod abac_action_attr;
 pub mod abac_object_attr;
-pub mod abac_policy;
+//pub mod abac_policy;
 pub mod abac_subject_attr;
 pub mod account;
 pub mod authz;
@@ -64,8 +64,8 @@ pub fn build_server() -> Server {
     let rpc = abac_action_attr::RpcImpl {};
     io.extend_with(rpc.to_delegate());
 
-    let rpc = abac_policy::RpcImpl {};
-    io.extend_with(rpc.to_delegate());
+    //    let rpc = abac_policy::RpcImpl {};
+    //    io.extend_with(rpc.to_delegate());
 
     let rpc = namespace::RpcImpl {};
     io.extend_with(rpc.to_delegate());

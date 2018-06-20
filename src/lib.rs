@@ -1,5 +1,6 @@
 #![deny(missing_debug_implementations)]
 
+extern crate abac;
 extern crate actix;
 extern crate actix_web;
 extern crate chrono;

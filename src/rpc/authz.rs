@@ -1,3 +1,4 @@
+use abac::types::AbacAttribute;
 use futures::Future;
 use jsonrpc::{self, BoxFuture};
 use uuid::Uuid;
@@ -17,9 +18,9 @@ build_rpc_trait! {
 #[derive(Debug, Deserialize)]
 pub struct Request {
     pub namespace_ids: Vec<Uuid>,
-    pub subject: Uuid,
-    pub object: String,
-    pub action: String,
+    pub subject: Vec<AbacAttribute>,
+    pub object: Vec<AbacAttribute>,
+    pub action: Vec<AbacAttribute>,
 }
 
 #[derive(Debug, Serialize)]
@@ -38,7 +39,14 @@ impl Rpc for RpcImpl {
     type Metadata = rpc::Meta;
 
     fn authz(&self, meta: rpc::Meta, req: Request) -> BoxFuture<Response> {
-        let msg = Authz::from(req);
+        use settings::SETTINGS;
+
+        let mut msg = Authz::from(req);
+        let settings = SETTINGS.read().unwrap();
+
+        msg.namespace_ids.push(settings.iam_namespace_id);
+        msg.namespace_ids.dedup();
+
         let fut = meta
             .db
             .unwrap()
