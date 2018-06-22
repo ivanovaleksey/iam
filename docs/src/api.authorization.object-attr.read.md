@@ -8,12 +8,10 @@ abac_object_attr.read
 
 ### Params
 
-Name         | Type   | Default    | Description
------------- | ------ | ---------- | ------------------
-namespace_id | uuid   | _required_ | -
-object_id    | string | _required_ | -
-key          | string | _required_ | -
-value        | string | _required_ | -
+Name     | Type           | Default    | Description
+-------- | -------------- | ---------- | ------------------
+inbound  | abac_attribute | _required_ | -
+outbound | abac_attribute | _required_ | -
 
 ### Example
 
@@ -24,10 +22,16 @@ value        | string | _required_ | -
     "jsonrpc": "2.0",
     "method": "abac_object_attr.read",
     "params": [{
-        "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-        "object_id": "room",
-        "key": "type",
-        "value": "room"
+        "inbound": {
+            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+            "key": "uri",
+            "value": "room/5eb64c75-de2c-4a8a-b97b-dd3599e10450"
+        },
+        "outbound": {
+            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+            "key": "type",
+            "value": "room"
+        }
     }],
     "id": "qwerty"
 }
@@ -39,10 +43,16 @@ value        | string | _required_ | -
 {
     "jsonrpc": "2.0",
     "result": {
-        "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-        "object_id": "room",
-        "key": "type",
-        "value": "room"
+        "inbound": {
+            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+            "key": "uri",
+            "value": "room/5eb64c75-de2c-4a8a-b97b-dd3599e10450"
+        },
+        "outbound": {
+            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+            "key": "type",
+            "value": "room"
+        }
     },
     "id": "qwerty"
 }
