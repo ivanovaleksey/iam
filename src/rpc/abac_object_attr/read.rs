@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, types::AbacAttribute};
+use abac::types::AbacAttribute;
 use futures::future::{self, Future};
 use jsonrpc;
 

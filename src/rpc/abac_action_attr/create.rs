@@ -1,34 +1,28 @@
+use abac::{models::AbacAction, types::AbacAttribute};
 use futures::future::{self, Future};
 use jsonrpc;
-use uuid::Uuid;
 
 use actors::db::{abac_action_attr, authz::Authz};
-use models::AbacActionAttr;
 use rpc;
+use settings;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
-    pub namespace_id: Uuid,
-    pub action_id: String,
-    pub key: String,
-    pub value: String,
+    pub inbound: AbacAttribute,
+    pub outbound: AbacAttribute,
 }
 
 #[derive(Debug, Serialize)]
 pub struct Response {
-    namespace_id: Uuid,
-    action_id: String,
-    key: String,
-    value: String,
+    inbound: AbacAttribute,
+    outbound: AbacAttribute,
 }
 
-impl From<AbacActionAttr> for Response {
-    fn from(attr: AbacActionAttr) -> Self {
+impl From<AbacAction> for Response {
+    fn from(action: AbacAction) -> Self {
         Response {
-            namespace_id: attr.namespace_id,
-            action_id: attr.action_id,
-            key: attr.key,
-            value: attr.value,
+            inbound: action.inbound,
+            outbound: action.outbound,
         }
     }
 }
@@ -38,19 +32,32 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.namespace_id;
+            let namespace_id = req.outbound.namespace_id;
             move |subject_id| {
-                //                let msg = Authz {
-                //                    namespace_ids: vec![namespace_id],
-                //                    subject: subject_id,
-                //                    object: format!("namespace.{}", namespace_id),
-                //                    action: "execute".to_owned(),
-                //                };
-                //
-                //                db.send(msg)
-                //                    .map_err(|_| jsonrpc::Error::internal_error())
-                //                    .and_then(rpc::ensure_authorized)
-                Ok(())
+                let iam_namespace_id = settings::iam_namespace_id();
+
+                let msg = Authz {
+                    namespace_ids: vec![iam_namespace_id],
+                    subject: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", subject_id),
+                    }],
+                    object: vec![AbacAttribute {
+                        namespace_id,
+                        key: "type".to_owned(),
+                        value: "abac_action".to_owned(),
+                    }],
+                    action: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "operation".to_owned(),
+                        value: "create".to_owned(),
+                    }],
+                };
+
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(rpc::ensure_authorized)
             }
         })
         .and_then({

@@ -1,13 +1,4 @@
 table! {
-    abac_action_attr (namespace_id, action_id, key, value) {
-        namespace_id -> Uuid,
-        action_id -> Text,
-        key -> Text,
-        value -> Text,
-    }
-}
-
-table! {
     abac_policy (namespace_id, subject_namespace_id, subject_key, subject_value, object_namespace_id, object_key, object_value, action_namespace_id, action_key, action_value) {
         namespace_id -> Uuid,
         subject_namespace_id -> Uuid,
@@ -62,16 +53,8 @@ table! {
     }
 }
 
-joinable!(abac_action_attr -> namespace (namespace_id));
 joinable!(identity -> namespace (provider));
 joinable!(namespace -> account (account_id));
 joinable!(refresh_token -> account (account_id));
 
-allow_tables_to_appear_in_same_query!(
-    abac_action_attr,
-    abac_policy,
-    account,
-    identity,
-    namespace,
-    refresh_token,
-);
+allow_tables_to_appear_in_same_query!(abac_policy, account, identity, namespace, refresh_token,);
