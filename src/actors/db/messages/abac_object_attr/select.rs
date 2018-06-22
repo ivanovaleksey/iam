@@ -1,25 +1,23 @@
+use abac::models::AbacObject;
 use actix::prelude::*;
 use diesel::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::AbacObjectAttr;
 use rpc::abac_object_attr::list;
 use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Select {
-    pub namespace_id: Uuid,
-    pub object_id: Option<String>,
-    pub key: Option<String>,
+    pub namespace_ids: Vec<Uuid>,
 }
 
 impl Message for Select {
-    type Result = Result<Vec<AbacObjectAttr>>;
+    type Result = Result<Vec<AbacObject>>;
 }
 
 impl Handler<Select> for DbExecutor {
-    type Result = Result<Vec<AbacObjectAttr>>;
+    type Result = Result<Vec<AbacObject>>;
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -29,30 +27,18 @@ impl Handler<Select> for DbExecutor {
 
 impl From<list::Request> for Select {
     fn from(req: list::Request) -> Self {
-        let filter = req.filter.0;
         Select {
-            namespace_id: filter.namespace_id,
-            object_id: filter.object_id,
-            key: filter.key,
+            namespace_ids: req.filter.namespace_ids,
         }
     }
 }
 
-fn call(conn: &PgConnection, msg: Select) -> Result<Vec<AbacObjectAttr>> {
-    use schema::abac_object_attr::dsl::*;
+fn call(conn: &PgConnection, msg: Select) -> Result<Vec<AbacObject>> {
+    use abac::dsl::*;
+    use abac::schema::abac_object::dsl::*;
+    use diesel::dsl::any;
 
-    let mut query = abac_object_attr.into_boxed();
-
-    query = query.filter(namespace_id.eq(msg.namespace_id));
-
-    if let Some(object) = msg.object_id {
-        query = query.filter(object_id.eq(object));
-    }
-
-    if let Some(k) = msg.key {
-        query = query.filter(key.eq(k));
-    }
-
+    let query = abac_object.filter(outbound.namespace_id().eq(any(msg.namespace_ids)));
     let items = query.load(conn)?;
 
     Ok(items)
