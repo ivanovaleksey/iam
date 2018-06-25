@@ -8,9 +8,9 @@ abac_policy.list
 
 ### Params
 
-Name         | Type   | Default    | Description
------------- | ------ | ---------- | ------------------
-fq           | string | _required_ | -
+Name   | Type   | Default    | Description
+-------| ------ | ---------- | ------------------
+filter | object | _required_ | -
 
 ### Example
 
@@ -21,7 +21,11 @@ fq           | string | _required_ | -
     "jsonrpc": "2.0",
     "method": "abac_policy.list",
     "params": [{
-        "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71"
+        "filter": {
+            "namespace_ids": [
+                "bab37008-3dc5-492c-af73-80c241241d71"
+            ]
+        }
     }],
     "id": "qwerty"
 }
@@ -35,18 +39,27 @@ fq           | string | _required_ | -
     "result": [
         {
             "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "subject_namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "subject_key": "role",
-            "subject_value": "admin",
-            "object_namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "object_key": "type",
-            "object_value": "namespace",
-            "action_namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "action_key": "action",
-            "action_value": "*",
-            "created_at": "2018-05-29T07:15:00",
-            "not_before": null,
-            "expired_at": null
+            "subject": [
+                {
+                    "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                    "key": "uri",
+                    "value": "account/f4e05c37-43a1-45aa-a8f8-fd656337cbc5"
+                }
+            ],
+            "object": [
+                {
+                    "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                    "key": "uri",
+                    "value": "account/f4e05c37-43a1-45aa-a8f8-fd656337cbc5"
+                }
+            ],
+            "action": [
+                {
+                    "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                    "key": "operation",
+                    "value": "any"
+                }
+            ]
         }
     ],
     "id": "qwerty"

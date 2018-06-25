@@ -10,7 +10,7 @@ abac_object_attr.list
 
 Name   | Type   | Default    | Description
 -------| ------ | ---------- | ------------------
-filter | string | _required_ | -
+filter | object | _required_ | -
 
 ### Example
 
