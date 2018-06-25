@@ -1,15 +1,15 @@
+use abac::models::AbacPolicy;
 use actix::prelude::*;
 use diesel::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::AbacPolicy;
 use rpc::abac_policy::list;
 use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Select {
-    pub namespace_id: Uuid,
+    pub namespace_ids: Vec<Uuid>,
 }
 
 impl Message for Select {
@@ -27,18 +27,17 @@ impl Handler<Select> for DbExecutor {
 
 impl From<list::Request> for Select {
     fn from(req: list::Request) -> Self {
-        let filter = req.filter.0;
         Select {
-            namespace_id: filter.namespace_id,
+            namespace_ids: req.filter.namespace_ids,
         }
     }
 }
 
 fn call(conn: &PgConnection, msg: Select) -> Result<Vec<AbacPolicy>> {
-    use schema::abac_policy::dsl::*;
+    use abac::schema::abac_policy::dsl::*;
+    use diesel::dsl::any;
 
-    let query = abac_policy.filter(namespace_id.eq(msg.namespace_id));
-
+    let query = abac_policy.filter(namespace_id.eq(any(msg.namespace_ids)));
     let items = query.load(conn)?;
 
     Ok(items)
