@@ -4,20 +4,20 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use models::Namespace;
-use rpc::error::Result;
 use rpc::namespace::read;
 
 #[derive(Debug)]
-pub struct Find {
-    pub id: Uuid,
+pub enum Find {
+    Any(Uuid),
+    Enabled(Uuid),
 }
 
 impl Message for Find {
-    type Result = Result<Namespace>;
+    type Result = QueryResult<Namespace>;
 }
 
 impl Handler<Find> for DbExecutor {
-    type Result = Result<Namespace>;
+    type Result = QueryResult<Namespace>;
 
     fn handle(&mut self, msg: Find, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -27,17 +27,20 @@ impl Handler<Find> for DbExecutor {
 
 impl From<read::Request> for Find {
     fn from(req: read::Request) -> Self {
-        Find { id: req.id }
+        Find::Enabled(req.id)
     }
 }
 
-fn call(conn: &PgConnection, msg: Find) -> Result<Namespace> {
-    use schema::namespace::dsl::*;
+fn call(conn: &PgConnection, msg: Find) -> QueryResult<Namespace> {
+    use schema::namespace;
 
-    let object = namespace
-        .filter(enabled.eq(true))
-        .find(msg.id)
-        .get_result(conn)?;
+    let record = match msg {
+        Find::Any(id) => namespace::table.find(id).get_result(conn)?,
+        Find::Enabled(id) => namespace::table
+            .filter(namespace::enabled.eq(true))
+            .find(id)
+            .get_result(conn)?,
+    };
 
-    Ok(object)
+    Ok(record)
 }

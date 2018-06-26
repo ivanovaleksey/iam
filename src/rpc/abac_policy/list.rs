@@ -3,8 +3,6 @@ use futures::future::{self, Future};
 use jsonrpc;
 use uuid::Uuid;
 
-use std::str;
-
 use actors::db::{abac_policy, authz::Authz};
 use rpc;
 use settings;

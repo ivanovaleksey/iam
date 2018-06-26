@@ -6,3 +6,4 @@ pub mod account;
 pub mod authz;
 pub mod identity;
 pub mod namespace;
+pub mod object_list;

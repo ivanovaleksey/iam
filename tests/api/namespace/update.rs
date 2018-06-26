@@ -1,236 +1,479 @@
-use actix_web::HttpMessage;
-use diesel;
-use diesel::prelude::*;
+use diesel::{self, prelude::*};
+use serde_json;
 
-use iam::schema::*;
+use abac::models::{AbacObject, AbacPolicy};
+use abac::schema::{abac_object, abac_policy};
+use abac::types::AbacAttribute;
 
-use shared;
+use iam::models::{Account, Namespace};
+use iam::schema::namespace;
 
-#[test]
-fn change_label() {
-    let shared::Server { mut srv, pool } = shared::build_server();
+use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
+use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID};
 
-    {
-        let conn = pool.get().expect("Failed to get connection from pool");
-        conn.begin_test_transaction()
-            .expect("Failed to begin transaction");
+#[must_use]
+fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
+    conn.begin_test_transaction()
+        .expect("Failed to begin transaction");
 
-        let account = shared::db::create_iam_account(&conn);
-        let _ = shared::db::create_iam_namespace(&conn, account.id);
-    }
+    let iam_account = create_account(conn, AccountKind::Iam);
+    let iam_namespace = create_namespace(conn, NamespaceKind::Iam(iam_account.id));
 
-    let req_json = r#"{
-        "jsonrpc": "2.0",
-        "method": "namespace.update",
-        "params": [{
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "label": "chat.ng.services"
-        }],
-        "id": "qwerty"
-    }"#;
-    let req = shared::build_anonymous_request(&srv, req_json.to_owned());
+    create_operations(conn, iam_namespace.id);
 
-    let resp = srv.execute(req.send()).unwrap();
-    assert!(resp.status().is_success());
+    diesel::insert_into(abac_object::table)
+        .values(AbacObject {
+            inbound: AbacAttribute {
+                namespace_id: iam_namespace.id,
+                key: "type".to_owned(),
+                value: "namespace".to_owned(),
+            },
+            outbound: AbacAttribute {
+                namespace_id: iam_namespace.id,
+                key: "uri".to_owned(),
+                value: format!("namespace/{}", iam_namespace.id),
+            },
+        })
+        .execute(conn)
+        .unwrap();
 
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "result": {
-            "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "created_at": "2018-05-30T08:40:00",
-            "enabled": true,
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "label": "chat.ng.services"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
+    (iam_account, iam_namespace)
 }
 
-#[test]
-fn disable_record() {
-    let shared::Server { mut srv, pool } = shared::build_server();
+mod with_permission {
+    use super::*;
 
-    {
-        let conn = pool.get().expect("Failed to get connection from pool");
-        conn.begin_test_transaction()
-            .expect("Failed to begin transaction");
+    #[must_use]
+    fn before_each_2(conn: &PgConnection) -> (Account, Namespace) {
+        let (iam_account, iam_namespace) = before_each_1(conn);
 
-        let account = shared::db::create_iam_account(&conn);
-        let _ = shared::db::create_iam_namespace(&conn, account.id);
-    }
-
-    let req_json = r#"{
-        "jsonrpc": "2.0",
-        "method": "namespace.update",
-        "params": [{
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "enabled": false
-        }],
-        "id": "qwerty"
-    }"#;
-    let req = shared::build_anonymous_request(&srv, req_json.to_owned());
-
-    let resp = srv.execute(req.send()).unwrap();
-    assert!(resp.status().is_success());
-
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "result": {
-            "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "created_at": "2018-05-30T08:40:00",
-            "enabled": false,
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "label": "iam.ng.services"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
-
-    let req_json = r#"{
-        "jsonrpc": "2.0",
-        "method": "namespace.read",
-        "params": [{
-            "id": "bab37008-3dc5-492c-af73-80c241241d71"
-        }],
-        "id": "qwerty"
-    }"#;
-    let req = shared::build_anonymous_request(&srv, req_json.to_owned());
-
-    let resp = srv.execute(req.send()).unwrap();
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "error": {
-            "code": 404,
-            "message": "NotFound"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
-}
-
-#[test]
-fn enable_record() {
-    let shared::Server { mut srv, pool } = shared::build_server();
-
-    {
-        let conn = pool.get().expect("Failed to get connection from pool");
-        conn.begin_test_transaction()
-            .expect("Failed to begin transaction");
-
-        let account = shared::db::create_iam_account(&conn);
-        let namespace = shared::db::create_iam_namespace(&conn, account.id);
-
-        diesel::update(&namespace)
-            .set(namespace::enabled.eq(false))
-            .execute(&conn)
+        diesel::insert_into(abac_policy::table)
+            .values(AbacPolicy {
+                subject: vec![AbacAttribute {
+                    namespace_id: iam_namespace.id,
+                    key: "uri".to_owned(),
+                    value: format!("account/{}", iam_account.id),
+                }],
+                object: vec![AbacAttribute {
+                    namespace_id: iam_namespace.id,
+                    key: "uri".to_owned(),
+                    value: format!("account/{}", iam_account.id),
+                }],
+                action: vec![AbacAttribute {
+                    namespace_id: iam_namespace.id,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                }],
+                namespace_id: iam_namespace.id,
+            })
+            .execute(conn)
             .unwrap();
+
+        (iam_account, iam_namespace)
     }
 
-    let read_req_json = r#"{
-        "jsonrpc": "2.0",
-        "method": "namespace.read",
-        "params": [{
-            "id": "bab37008-3dc5-492c-af73-80c241241d71"
-        }],
-        "id": "qwerty"
-    }"#;
-    let req = shared::build_anonymous_request(&srv, read_req_json.to_owned());
+    mod with_existing_record {
+        use super::*;
+        use actix_web::HttpMessage;
 
-    let resp = srv.execute(req.send()).unwrap();
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "error": {
-            "code": 404,
-            "message": "NotFound"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
+        #[must_use]
+        fn before_each_3(conn: &PgConnection) -> Namespace {
+            let _ = before_each_2(conn);
 
-    let req_json = r#"{
-        "jsonrpc": "2.0",
-        "method": "namespace.update",
-        "params": [{
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "enabled": true
-        }],
-        "id": "qwerty"
-    }"#;
-    let req = shared::build_anonymous_request(&srv, req_json.to_owned());
+            let foxford_account = create_account(conn, AccountKind::Foxford);
+            let foxford_namespace =
+                create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
-    let resp = srv.execute(req.send()).unwrap();
-    assert!(resp.status().is_success());
+            foxford_namespace
+        }
 
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "result": {
-            "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "created_at": "2018-05-30T08:40:00",
-            "enabled": true,
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "label": "iam.ng.services"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
+        mod when_authorized_request {
+            use super::*;
 
-    let req = shared::build_anonymous_request(&srv, read_req_json.to_owned());
-    let resp = srv.execute(req.send()).unwrap();
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "result": {
-            "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "created_at": "2018-05-30T08:40:00",
-            "enabled": true,
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "label": "iam.ng.services"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
+            #[test]
+            fn update_label() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let changeset = build_request(Some("stoege.ru"), None);
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&changeset).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                let template = r#"{
+                    "jsonrpc": "2.0",
+                    "result": {
+                        "account_id": "FOXFORD_ACCOUNT_ID",
+                        "created_at": "2018-05-30T08:40:00",
+                        "enabled": true,
+                        "id": "FOXFORD_NAMESPACE_ID",
+                        "label": "stoege.ru"
+                    },
+                    "id": "qwerty"
+                }"#;
+
+                let json = template
+                    .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
+                    .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+
+                assert_eq!(body, shared::strip_json(&json));
+
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn).label, "stoege.ru");
+            }
+
+            #[test]
+            fn disable_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let changeset = build_request(None, Some(false));
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&changeset).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                let template = r#"{
+                    "jsonrpc": "2.0",
+                    "result": {
+                        "account_id": "FOXFORD_ACCOUNT_ID",
+                        "created_at": "2018-05-30T08:40:00",
+                        "enabled": false,
+                        "id": "FOXFORD_NAMESPACE_ID",
+                        "label": "foxford.ru"
+                    },
+                    "id": "qwerty"
+                }"#;
+
+                let json = template
+                    .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
+                    .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+
+                assert_eq!(body, shared::strip_json(&json));
+
+                let conn = get_conn!(pool);
+                assert!(!find_record(&conn).enabled);
+            }
+
+            #[test]
+            fn enable_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let namespace = before_each_3(&conn);
+
+                    diesel::update(&namespace)
+                        .set(namespace::enabled.eq(false))
+                        .execute(&conn)
+                        .unwrap();
+                }
+
+                let changeset = build_request(None, Some(true));
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&changeset).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                let template = r#"{
+                    "jsonrpc": "2.0",
+                    "result": {
+                        "account_id": "FOXFORD_ACCOUNT_ID",
+                        "created_at": "2018-05-30T08:40:00",
+                        "enabled": true,
+                        "id": "FOXFORD_NAMESPACE_ID",
+                        "label": "foxford.ru"
+                    },
+                    "id": "qwerty"
+                }"#;
+
+                let json = template
+                    .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
+                    .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+
+                assert_eq!(body, shared::strip_json(&json));
+
+                let conn = get_conn!(pool);
+                assert!(find_record(&conn).enabled);
+            }
+        }
+
+        #[test]
+        fn when_anonymous_request() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_3(&conn);
+            }
+
+            let changeset = build_request(Some("stoege.ru"), None);
+            let req =
+                shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::FORBIDDEN);
+
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
+    }
+
+    mod without_existing_record {
+        use super::*;
+        use actix_web::HttpMessage;
+
+        #[must_use]
+        fn before_each_3(conn: &PgConnection) {
+            let _ = before_each_2(conn);
+        }
+
+        #[test]
+        fn when_authorized_request() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_3(&conn);
+            }
+
+            let changeset = build_request(Some("stoege.ru"), None);
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&changeset).unwrap(),
+                Some(*IAM_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::NOT_FOUND);
+        }
+
+        #[test]
+        fn when_anonymous_request() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_3(&conn);
+            }
+
+            let changeset = build_request(Some("stoege.ru"), None);
+            let req =
+                shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::FORBIDDEN);
+        }
+    }
 }
 
-#[test]
-fn with_nonexisting_record() {
-    let shared::Server { mut srv, pool } = shared::build_server();
+mod without_permission {
+    use super::*;
 
-    {
-        let conn = pool.get().expect("Failed to get connection from pool");
-        conn.begin_test_transaction()
-            .expect("Failed to begin transaction");
-
-        let _ = shared::db::create_iam_account(&conn);
+    #[must_use]
+    fn before_each_2(conn: &PgConnection) -> (Account, Namespace) {
+        before_each_1(conn)
     }
 
-    let req_json = r#"{
+    mod with_existing_record {
+        use super::*;
+        use actix_web::HttpMessage;
+
+        #[must_use]
+        fn before_each_3(conn: &PgConnection) -> Namespace {
+            let _ = before_each_2(conn);
+
+            let foxford_account = create_account(conn, AccountKind::Foxford);
+            let foxford_namespace =
+                create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
+
+            foxford_namespace
+        }
+
+        mod when_authorized_request {
+            use super::*;
+
+            #[test]
+            fn update_label() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let changeset = build_request(Some("stoege.ru"), None);
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&changeset).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn).label, "foxford.ru");
+            }
+
+            #[test]
+            fn disable_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let changeset = build_request(None, Some(false));
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&changeset).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+
+                let conn = get_conn!(pool);
+                assert!(find_record(&conn).enabled);
+            }
+
+            #[test]
+            fn enable_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let namespace = before_each_3(&conn);
+
+                    diesel::update(&namespace)
+                        .set(namespace::enabled.eq(false))
+                        .execute(&conn)
+                        .unwrap();
+                }
+
+                let changeset = build_request(None, Some(true));
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&changeset).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+
+                let conn = get_conn!(pool);
+                assert!(!find_record(&conn).enabled);
+            }
+        }
+
+        #[test]
+        fn when_anonymous_request() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_3(&conn);
+            }
+
+            let changeset = build_request(Some("stoege.ru"), None);
+            let req =
+                shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::FORBIDDEN);
+
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
+    }
+
+    mod without_existing_record {
+        use super::*;
+        use actix_web::HttpMessage;
+
+        #[must_use]
+        fn before_each_3(conn: &PgConnection) {
+            let _ = before_each_2(conn);
+        }
+
+        #[test]
+        fn when_authorized_request() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_3(&conn);
+            }
+
+            let changeset = build_request(Some("stoege.ru"), None);
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&changeset).unwrap(),
+                Some(*IAM_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::FORBIDDEN);
+        }
+
+        #[test]
+        fn when_anonymous_request() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_3(&conn);
+            }
+
+            let changeset = build_request(Some("stoege.ru"), None);
+            let req =
+                shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::FORBIDDEN);
+        }
+    }
+}
+
+fn build_request(label: Option<&str>, enabled: Option<bool>) -> serde_json::Value {
+    let mut payload = json!({
+        "id": *FOXFORD_NAMESPACE_ID
+    });
+    if let Some(label) = label {
+        payload["label"] = serde_json::Value::String(label.to_owned());
+    }
+    if let Some(enabled) = enabled {
+        payload["enabled"] = serde_json::Value::Bool(enabled);
+    }
+
+    json!({
         "jsonrpc": "2.0",
         "method": "namespace.update",
-        "params": [{
-            "id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "label": "chat.ng.services"
-        }],
+        "params": [payload],
         "id": "qwerty"
-    }"#;
-    let req = shared::build_anonymous_request(&srv, req_json.to_owned());
+    })
+}
 
-    let resp = srv.execute(req.send()).unwrap();
-    assert!(resp.status().is_success());
-
-    let body = srv.execute(resp.body()).unwrap();
-    let json = r#"{
-        "jsonrpc": "2.0",
-        "error": {
-            "code": 404,
-            "message": "NotFound"
-        },
-        "id": "qwerty"
-    }"#;
-    assert_eq!(body, shared::strip_json(&json));
+fn find_record(conn: &PgConnection) -> Namespace {
+    namespace::table
+        .find(*FOXFORD_NAMESPACE_ID)
+        .get_result(conn)
+        .unwrap()
 }

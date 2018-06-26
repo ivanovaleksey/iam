@@ -5,11 +5,10 @@ use uuid::Uuid;
 use actors::DbExecutor;
 use models::Namespace;
 use rpc::error::Result;
-use rpc::namespace::list;
 
 #[derive(Debug)]
 pub struct Select {
-    pub account_id: Uuid,
+    pub ids: Vec<Uuid>,
 }
 
 impl Message for Select {
@@ -25,21 +24,13 @@ impl Handler<Select> for DbExecutor {
     }
 }
 
-impl From<list::Request> for Select {
-    fn from(req: list::Request) -> Self {
-        let filter = req.filter.0;
-        Select {
-            account_id: filter.account_id,
-        }
-    }
-}
-
 fn call(conn: &PgConnection, msg: Select) -> Result<Vec<Namespace>> {
+    use diesel::dsl::any;
     use schema::namespace::dsl::*;
 
     let query = namespace
         .filter(enabled.eq(true))
-        .filter(account_id.eq(msg.account_id));
+        .filter(id.eq(any(msg.ids)));
 
     let items = query.load(conn)?;
 

@@ -90,30 +90,36 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
         .unwrap();
 
     diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", namespace.id),
+        .values(vec![
+            AbacObject {
+                inbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "uri".to_owned(),
+                    value: format!("namespace/{}", namespace.id),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "type".to_owned(),
+                    value: "namespace".to_owned(),
+                },
             },
-            outbound: AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", namespace.account_id),
+            AbacObject {
+                inbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "uri".to_owned(),
+                    value: format!("namespace/{}", namespace.id),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "uri".to_owned(),
+                    value: format!("account/{}", namespace.account_id),
+                },
             },
-        })
+        ])
         .execute(conn)
         .unwrap();
 
     namespace
-}
-
-pub fn create_iam_account(conn: &PgConnection) -> Account {
-    create_account(conn, AccountKind::Iam)
-}
-
-pub fn create_iam_namespace(conn: &PgConnection, account_id: Uuid) -> Namespace {
-    create_namespace(conn, NamespaceKind::Iam(account_id))
 }
 
 pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {

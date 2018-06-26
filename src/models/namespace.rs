@@ -16,7 +16,7 @@ pub struct Namespace {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(AsChangeset, Insertable, Debug)]
+#[derive(AsChangeset, Insertable, Debug, Serialize)]
 #[table_name = "namespace"]
 pub struct NewNamespace {
     pub label: String,
