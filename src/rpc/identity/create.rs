@@ -4,8 +4,8 @@ use futures::future::{self, Future};
 use jsonrpc;
 use uuid::Uuid;
 
-use actors::db;
-use models::Identity;
+use actors::db::{authz::Authz, identity};
+use models::{identity::PrimaryKey, Identity};
 use rpc;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -41,15 +41,50 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
+            let namespace_id = req.provider;
+            move |subject_id| {
+                use abac::types::AbacAttribute;
+                use settings::SETTINGS;
+
+                let settings = SETTINGS.read().unwrap();
+                let iam_namespace_id = settings.iam_namespace_id;
+
+                let msg = Authz {
+                    namespace_ids: vec![iam_namespace_id],
+                    subject: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", subject_id),
+                    }],
+                    object: vec![AbacAttribute {
+                        namespace_id,
+                        key: "type".to_owned(),
+                        value: "identity".to_owned(),
+                    }],
+                    action: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "operation".to_owned(),
+                        value: "create".to_owned(),
+                    }],
+                };
+
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(rpc::ensure_authorized)
+            }
+        })
+        .and_then({
+            let db = meta.db.clone().unwrap();
             let req = req.clone();
 
             // Find existing identity by (provider, label, uid) triple.
-            move |_subject_id| {
-                let msg = db::identity::find::Find {
+            move |_| {
+                let pk = PrimaryKey {
                     provider: req.provider,
                     label: req.label,
                     uid: req.uid,
                 };
+                let msg = identity::find::Find(pk);
 
                 db.send(msg)
                     .map_err(|_| jsonrpc::Error::internal_error())
@@ -74,41 +109,24 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             }
         })
         .and_then({
-            let db = meta.db.clone().unwrap();
+            let db = meta.db.unwrap();
 
-            // Identity is not found. Create new account.
+            // Identity is not found. Create new account & linked identity.
             move |_| {
-                let msg = db::account::insert::Insert { enabled: true };
-
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(move |res| {
-                        debug!("account insert res: {:?}", res);
-
-                        let account = res.map_err(rpc::error::Error::Db)?;
-                        Ok(account.id)
-                    })
-            }
-        })
-        .and_then({
-            let db = meta.db.clone().unwrap();
-
-            // Create identity linked to the created account.
-            move |account_id| {
-                let msg = db::identity::insert::Insert {
+                let pk = PrimaryKey {
                     provider: req.provider,
                     label: req.label,
                     uid: req.uid,
-                    account_id,
                 };
+                let msg = identity::insert::Insert::IdentityWithAccount(pk);
 
                 db.send(msg)
                     .map_err(|_| jsonrpc::Error::internal_error())
                     .and_then(|res| {
                         debug!("identity insert res: {:?}", res);
 
-                        let iden = res.map_err(rpc::error::Error::Db)?;
-                        Ok(Response::from(iden))
+                        let identity = res.map_err(rpc::error::Error::Db)?;
+                        Ok(Response::from(identity))
                     })
             }
         })

@@ -3,14 +3,13 @@ use diesel::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::Identity;
+use models::{identity::PrimaryKey, Identity};
 use rpc::error::Result;
-use rpc::identity::list;
 
 #[derive(Debug)]
-pub struct Select {
-    pub provider: Option<Uuid>,
-    pub account_id: Option<Uuid>,
+pub enum Select {
+    ByIds(Vec<PrimaryKey>),
+    ByAccountId(Uuid),
 }
 
 impl Message for Select {
@@ -22,32 +21,44 @@ impl Handler<Select> for DbExecutor {
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
-    }
-}
-
-impl From<list::Request> for Select {
-    fn from(req: list::Request) -> Self {
-        let filter = req.filter.0;
-        Select {
-            provider: filter.provider,
-            account_id: filter.account_id,
+        match msg {
+            Select::ByIds(ids) => select_by_ids(conn, &ids),
+            Select::ByAccountId(account_id) => select_by_account_id(conn, account_id),
         }
     }
 }
 
-fn call(conn: &PgConnection, msg: Select) -> Result<Vec<Identity>> {
-    use schema::identity::dsl::*;
+fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> Result<Vec<Identity>> {
+    use diesel;
+    use schema::identity;
 
-    let mut query = identity.into_boxed();
+    // TODO: remove it once Diesel support (provider, label, uid) IN ((), (), ()) syntax
+    let values = ids
+        .iter()
+        .map(|pk| format!("('{}','{}','{}')", pk.provider, pk.label, pk.uid))
+        .collect::<Vec<_>>()
+        .join(",");
 
-    if let Some(value) = msg.provider {
-        query = query.filter(provider.eq(value));
-    }
+    let filter = format!(
+        "(identity.provider, identity.label, identity.uid) IN ({})",
+        values
+    );
 
-    if let Some(value) = msg.account_id {
-        query = query.filter(account_id.eq(value));
-    }
+    let query = identity::table
+        .filter(diesel::dsl::sql(&filter))
+        .order(identity::created_at.asc());
+
+    let items = query.load(conn)?;
+
+    Ok(items)
+}
+
+fn select_by_account_id(conn: &PgConnection, account_id: Uuid) -> Result<Vec<Identity>> {
+    use schema::identity;
+
+    let query = identity::table
+        .filter(identity::account_id.eq(account_id))
+        .order(identity::created_at.asc());
 
     let items = query.load(conn)?;
 

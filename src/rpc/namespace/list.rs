@@ -69,7 +69,11 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             move |_| {
                 use actors::db::object_list::ObjectList;
 
-                let msg = ObjectList { objects };
+                let msg = ObjectList {
+                    objects,
+                    offset: 0,
+                    limit: 100,
+                };
                 db.send(msg)
                     .map_err(|_| jsonrpc::Error::internal_error())
                     .and_then(|res| {

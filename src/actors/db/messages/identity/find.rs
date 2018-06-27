@@ -1,17 +1,12 @@
 use actix::prelude::*;
 use diesel::prelude::*;
-use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::Identity;
+use models::{identity::PrimaryKey, Identity};
 use rpc::identity::read;
 
 #[derive(Debug)]
-pub struct Find {
-    pub provider: Uuid,
-    pub label: String,
-    pub uid: String,
-}
+pub struct Find(pub PrimaryKey);
 
 impl Message for Find {
     type Result = QueryResult<Identity>;
@@ -28,17 +23,18 @@ impl Handler<Find> for DbExecutor {
 
 impl From<read::Request> for Find {
     fn from(req: read::Request) -> Self {
-        Find {
+        let pk = PrimaryKey {
             provider: req.provider,
             label: req.label,
             uid: req.uid,
-        }
+        };
+
+        Find(pk)
     }
 }
 
 fn call(conn: &PgConnection, msg: Find) -> QueryResult<Identity> {
     use schema::identity::dsl::*;
 
-    let pk = (msg.provider, msg.label, msg.uid);
-    identity.find(pk).get_result(conn)
+    identity.find(msg.0.as_tuple()).get_result(conn)
 }

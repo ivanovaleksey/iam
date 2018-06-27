@@ -8,9 +8,9 @@ identity.list
 
 ### Params
 
-Name      | Type   | Default    | Description
---------- | ------ | ---------- | ------------------
-fq        | string | _required_ | -
+Name   | Type   | Default    | Description
+------ | ------ | ---------- | ------------------
+filter | object | _required_ | -
 
 ### Example
 
@@ -21,7 +21,9 @@ fq        | string | _required_ | -
     "jsonrpc": "2.0",
     "method": "identity.list",
     "params": [{
-        "fq": "provider:bab37008-3dc5-492c-af73-80c241241d71"
+        "filter": {
+            "provider": "bab37008-3dc5-492c-af73-80c241241d71" 
+        }
     }],
     "id": "qwerty"
 }

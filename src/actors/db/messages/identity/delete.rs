@@ -27,20 +27,19 @@ impl Handler<Delete> for DbExecutor {
 }
 
 fn delete_identity(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
-    use schema::identity::dsl::*;
+    use schema::identity;
 
-    let target = identity.find(pk.as_tuple());
-    let object = diesel::delete(target).get_result(conn)?;
+    let target = identity::table.find(pk.as_tuple());
+    let identity = diesel::delete(target).get_result(conn)?;
 
-    Ok(object)
+    Ok(identity)
 }
 
 fn delete_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
-    use schema::{account, identity};
+    use schema::account;
 
     conn.transaction::<_, _, _>(|| {
-        let target = identity::table.find(pk.as_tuple());
-        let identity = diesel::delete(target).get_result::<Identity>(conn)?;
+        let identity = delete_identity(conn, pk)?;
 
         let target = account::table.find(identity.account_id);
         diesel::delete(target).execute(conn)?;
