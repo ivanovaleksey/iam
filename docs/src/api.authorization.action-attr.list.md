@@ -8,9 +8,9 @@ abac_action_attr.list
 
 ### Params
 
-Name         | Type   | Default    | Description
------------- | ------ | ---------- | ------------------
-fq           | string | _required_ | -
+Name   | Type   | Default    | Description
+-------| ------ | ---------- | ------------------
+filter | string | _required_ | -
 
 ### Example
 
@@ -21,7 +21,11 @@ fq           | string | _required_ | -
     "jsonrpc": "2.0",
     "method": "abac_action_attr.list",
     "params": [{
-        "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND action_id:create AND key:access"
+        "filter": {
+            "namespace_ids": [
+                "bab37008-3dc5-492c-af73-80c241241d71"
+            ]
+        }
     }],
     "id": "qwerty"
 }
@@ -34,10 +38,16 @@ fq           | string | _required_ | -
     "jsonrpc": "2.0",
     "result": [
         {
-            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "action_id": "create",
-            "key": "access",
-            "value": "*"
+            "inbound": {
+                "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                "key": "operation",
+                "value": "read"
+            },
+            "outbound": {
+                "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                "key": "operation",
+                "value": "any"
+            }
         }
     ],
     "id": "qwerty"
