@@ -118,7 +118,8 @@ fn with_permission() {
             .unwrap();
     }
 
-    let req = shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+    let req =
+        shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
     let resp = srv.execute(req.send()).unwrap();
     let body = srv.execute(resp.body()).unwrap();
     let resp_json = r#"{
@@ -138,7 +139,8 @@ fn without_permission() {
         let _ = before_each(&conn);
     }
 
-    let req = shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+    let req =
+        shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
     let resp = srv.execute(req.send()).unwrap();
     let body = srv.execute(resp.body()).unwrap();
     let resp_json = r#"{

@@ -1,8 +1,10 @@
+use abac::types::AbacAttribute;
 use futures::future::{self, Future};
 use jsonrpc;
 
 use actors::db::{abac_subject_attr, authz::Authz};
 use rpc;
+use settings;
 
 pub type Request = rpc::abac_subject_attr::create::Request;
 pub type Response = rpc::abac_subject_attr::create::Response;
@@ -12,19 +14,32 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.namespace_id;
+            let namespace_id = req.outbound.namespace_id;
             move |subject_id| {
-                //                let msg = Authz {
-                //                    namespace_ids: vec![namespace_id],
-                //                    subject: subject_id,
-                //                    object: format!("namespace.{}", namespace_id),
-                //                    action: "execute".to_owned(),
-                //                };
-                //
-                //                db.send(msg)
-                //                    .map_err(|_| jsonrpc::Error::internal_error())
-                //                    .and_then(rpc::ensure_authorized)
-                Ok(())
+                let iam_namespace_id = settings::iam_namespace_id();
+
+                let msg = Authz {
+                    namespace_ids: vec![iam_namespace_id],
+                    subject: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", subject_id),
+                    }],
+                    object: vec![AbacAttribute {
+                        namespace_id,
+                        key: "type".to_owned(),
+                        value: "abac_subject".to_owned(),
+                    }],
+                    action: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "operation".to_owned(),
+                        value: "delete".to_owned(),
+                    }],
+                };
+
+                db.send(msg)
+                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .and_then(rpc::ensure_authorized)
             }
         })
         .and_then({

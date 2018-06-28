@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use actors::db::authz::Authz;
 use rpc;
+use settings;
 
 build_rpc_trait! {
     pub trait Rpc {
@@ -39,12 +40,10 @@ impl Rpc for RpcImpl {
     type Metadata = rpc::Meta;
 
     fn authz(&self, meta: rpc::Meta, req: Request) -> BoxFuture<Response> {
-        use settings::SETTINGS;
+        let iam_namespace_id = settings::iam_namespace_id();
 
         let mut msg = Authz::from(req);
-        let settings = SETTINGS.read().unwrap();
-
-        msg.namespace_ids.push(settings.iam_namespace_id);
+        msg.namespace_ids.push(iam_namespace_id);
         msg.namespace_ids.dedup();
 
         let fut = meta

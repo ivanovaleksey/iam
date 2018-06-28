@@ -12,6 +12,19 @@ lazy_static! {
     pub static ref SETTINGS: RwLock<Settings> = RwLock::new(Settings::default());
 }
 
+#[derive(Debug, Default, Deserialize)]
+pub struct Settings {
+    #[serde(skip_deserializing)]
+    pub public_key: String,
+    pub public_key_path: PathBuf,
+
+    #[serde(skip_deserializing)]
+    pub private_key: String,
+    pub private_key_path: PathBuf,
+
+    pub iam_namespace_id: Uuid,
+}
+
 pub fn init() -> Result<(), failure::Error> {
     debug!("Initializing settings");
     let mut settings = SETTINGS.write().unwrap();
@@ -29,15 +42,7 @@ pub fn init() -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[derive(Debug, Default, Deserialize)]
-pub struct Settings {
-    #[serde(skip_deserializing)]
-    pub public_key: String,
-    pub public_key_path: PathBuf,
-
-    #[serde(skip_deserializing)]
-    pub private_key: String,
-    pub private_key_path: PathBuf,
-
-    pub iam_namespace_id: Uuid,
+pub fn iam_namespace_id() -> Uuid {
+    let settings = SETTINGS.read().expect("Settings RwLock is poisoned");
+    settings.iam_namespace_id
 }

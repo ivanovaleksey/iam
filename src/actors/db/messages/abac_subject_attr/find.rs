@@ -1,26 +1,24 @@
+use abac::{models::AbacSubject, types::AbacAttribute};
 use actix::prelude::*;
 use diesel::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::AbacSubjectAttr;
 use rpc::abac_subject_attr::read;
 use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Find {
-    pub namespace_id: Uuid,
-    pub subject_id: Uuid,
-    pub key: String,
-    pub value: String,
+    pub inbound: AbacAttribute,
+    pub outbound: AbacAttribute,
 }
 
 impl Message for Find {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacSubject>;
 }
 
 impl Handler<Find> for DbExecutor {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacSubject>;
 
     fn handle(&mut self, msg: Find, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -31,19 +29,17 @@ impl Handler<Find> for DbExecutor {
 impl From<read::Request> for Find {
     fn from(req: read::Request) -> Self {
         Find {
-            namespace_id: req.namespace_id,
-            subject_id: req.subject_id,
-            key: req.key,
-            value: req.value,
+            inbound: req.inbound,
+            outbound: req.outbound,
         }
     }
 }
 
-fn call(conn: &PgConnection, msg: Find) -> Result<AbacSubjectAttr> {
-    use schema::abac_subject_attr::dsl::*;
+fn call(conn: &PgConnection, msg: Find) -> Result<AbacSubject> {
+    use abac::schema::abac_subject::dsl::*;
 
-    let pk = (msg.namespace_id, msg.subject_id, msg.key, msg.value);
-    let object = abac_subject_attr.find(pk).get_result(conn)?;
+    let pk = (msg.inbound, msg.outbound);
+    let subject = abac_subject.find(pk).get_result(conn)?;
 
-    Ok(object)
+    Ok(subject)
 }
