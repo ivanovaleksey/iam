@@ -7,7 +7,7 @@ use std::{fmt, str};
 use models::Namespace;
 use schema::identity;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PrimaryKey {
     pub provider: Uuid,
     pub label: String,

@@ -13,7 +13,7 @@ use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
 use iam::schema::{account, identity};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID};
+use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
 
 lazy_static! {
     static ref FOXFORD_USER_ID: Uuid = Uuid::new_v4();
@@ -119,15 +119,123 @@ mod with_permission {
                 assert_eq!(identity.label, pk.label);
                 assert_eq!(identity.uid, pk.uid);
 
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(1));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
 
-                let created_account = account::table
-                    .find(identity.account_id)
-                    .get_result::<Account>(&conn)
-                    .unwrap();
+                    let created_account = account::table
+                        .find(identity.account_id)
+                        .get_result::<Account>(&conn)
+                        .unwrap();
 
-                assert!(created_account.enabled);
+                    assert!(created_account.enabled);
+                }
+
+                let req_json = json!({
+                    "jsonrpc": "2.0",
+                    "method": "authorize",
+                    "params": [{
+                        "namespace_ids": [*IAM_NAMESPACE_ID],
+                        "subject": [
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "uri",
+                                "value": format!("account/{}", identity.account_id),
+                            }
+                        ],
+                        "object": [
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "uri",
+                                "value": format!("identity/{}", PrimaryKey::from(identity.clone())),
+                            }
+                        ],
+                        "action": [
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "operation",
+                                "value": "read",
+                            },
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "operation",
+                                "value": "update",
+                            },
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "operation",
+                                "value": "delete",
+                            }
+                        ],
+                    }],
+                    "id": "qwerty",
+                });
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&req_json).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                let resp_json = r#"{
+                    "jsonrpc": "2.0",
+                    "result": true,
+                    "id": "qwerty"
+                }"#;
+                assert_eq!(body, shared::strip_json(resp_json));
+
+                let req_json = json!({
+                    "jsonrpc": "2.0",
+                    "method": "authorize",
+                    "params": [{
+                        "namespace_ids": [*IAM_NAMESPACE_ID],
+                        "subject": [
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "uri",
+                                "value": format!("account/{}", *FOXFORD_ACCOUNT_ID),
+                            }
+                        ],
+                        "object": [
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "uri",
+                                "value": format!("identity/{}", PrimaryKey::from(identity.clone())),
+                            }
+                        ],
+                        "action": [
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "operation",
+                                "value": "read",
+                            },
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "operation",
+                                "value": "update",
+                            },
+                            {
+                                "namespace_id": *IAM_NAMESPACE_ID,
+                                "key": "operation",
+                                "value": "delete",
+                            }
+                        ],
+                    }],
+                    "id": "qwerty",
+                });
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&req_json).unwrap(),
+                    Some(*IAM_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                let resp_json = r#"{
+                    "jsonrpc": "2.0",
+                    "result": true,
+                    "id": "qwerty"
+                }"#;
+                assert_eq!(body, shared::strip_json(resp_json));
             } else {
                 panic!("{:?}", body);
             }

@@ -10,7 +10,7 @@ use abac::types::AbacAttribute;
 use iam::models::{Account, Namespace, NewNamespace};
 use iam::schema::namespace;
 
-use shared::{self, FOXFORD_ACCOUNT_ID, IAM_ACCOUNT_ID};
+use shared::{self, FOXFORD_ACCOUNT_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
 
 #[must_use]
 fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
@@ -106,8 +106,63 @@ mod with_permission {
             assert_eq!(namespace.account_id, expected.account_id);
             assert_eq!(namespace.enabled, expected.enabled);
 
-            let conn = get_conn!(pool);
-            assert_eq!(find_record(&conn), Ok(1));
+            {
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn), Ok(1));
+            }
+
+            let req_json = json!({
+                "jsonrpc": "2.0",
+                "method": "authorize",
+                "params": [{
+                    "namespace_ids": [*IAM_NAMESPACE_ID],
+                    "subject": [
+                        {
+                            "namespace_id": *IAM_NAMESPACE_ID,
+                            "key": "uri",
+                            "value": format!("account/{}", *IAM_ACCOUNT_ID),
+                        }
+                    ],
+                    "object": [
+                        {
+                            "namespace_id": *IAM_NAMESPACE_ID,
+                            "key": "uri",
+                            "value": format!("namespace/{}", namespace.id),
+                        }
+                    ],
+                    "action": [
+                        {
+                            "namespace_id": *IAM_NAMESPACE_ID,
+                            "key": "operation",
+                            "value": "read",
+                        },
+                        {
+                            "namespace_id": *IAM_NAMESPACE_ID,
+                            "key": "operation",
+                            "value": "update",
+                        },
+                        {
+                            "namespace_id": *IAM_NAMESPACE_ID,
+                            "key": "operation",
+                            "value": "delete",
+                        }
+                    ],
+                }],
+                "id": "qwerty",
+            });
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&req_json).unwrap(),
+                Some(*IAM_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            let resp_json = r#"{
+                "jsonrpc": "2.0",
+                "result": true,
+                "id": "qwerty"
+            }"#;
+            assert_eq!(body, shared::strip_json(resp_json));
         } else {
             panic!("{:?}", body);
         }
