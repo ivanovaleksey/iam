@@ -35,15 +35,6 @@ table! {
 }
 
 table! {
-    abac_subject_attr (namespace_id, subject_id, key, value) {
-        namespace_id -> Uuid,
-        subject_id -> Uuid,
-        key -> Text,
-        value -> Text,
-    }
-}
-
-table! {
     account (id) {
         id -> Uuid,
         enabled -> Bool,
@@ -82,7 +73,6 @@ table! {
 
 joinable!(abac_action_attr -> namespace (namespace_id));
 joinable!(abac_object_attr -> namespace (namespace_id));
-joinable!(abac_subject_attr -> namespace (namespace_id));
 joinable!(identity -> namespace (provider));
 joinable!(namespace -> account (account_id));
 joinable!(refresh_token -> account (account_id));
@@ -91,7 +81,6 @@ allow_tables_to_appear_in_same_query!(
     abac_action_attr,
     abac_object_attr,
     abac_policy,
-    abac_subject_attr,
     account,
     identity,
     namespace,

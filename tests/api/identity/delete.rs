@@ -116,8 +116,6 @@ fn delete_last_identity() {
         .find(*USER_ACCOUNT_ID)
         .get_result::<Account>(&conn);
 
-    println!("{:?}", result);
-
     if let Err(diesel::result::Error::NotFound) = result {
         assert!(true);
     } else {

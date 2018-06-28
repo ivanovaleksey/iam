@@ -4,84 +4,186 @@ use diesel::prelude::*;
 use uuid::Uuid;
 
 use iam::models::*;
-use iam::schema::*;
 
-use shared;
+use shared::{FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
 
-pub fn create_iam_account(conn: &PgConnection) -> Account {
-    diesel::insert_into(account::table)
-        .values((
-            account::id.eq(*shared::IAM_ACCOUNT_ID),
-            account::enabled.eq(true),
-        ))
-        .get_result(conn)
-        .unwrap()
+pub enum AccountKind {
+    Iam,
+    Foxford,
+    Other(Uuid),
 }
 
-pub fn create_iam_namespace(conn: &PgConnection, account_id: Uuid) -> Namespace {
-    diesel::insert_into(namespace::table)
+pub enum NamespaceKind<'a> {
+    Iam(Uuid),
+    Foxford(Uuid),
+    Other {
+        id: Uuid,
+        label: &'a str,
+        account_id: Uuid,
+    },
+}
+
+pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
+    use self::AccountKind::*;
+    use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
+    use iam::schema::account;
+
+    let id = match kind {
+        Iam => *IAM_ACCOUNT_ID,
+        Foxford => *FOXFORD_ACCOUNT_ID,
+        Other(id) => id,
+    };
+
+    let account = diesel::insert_into(account::table)
+        .values((account::id.eq(id), account::enabled.eq(true)))
+        .get_result::<Account>(conn)
+        .unwrap();
+
+    match kind {
+        Iam => {}
+        _ => {
+            diesel::insert_into(abac_object::table)
+                .values(AbacObject {
+                    inbound: AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", account.id),
+                    },
+                    outbound: AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("namespace/{}", *IAM_NAMESPACE_ID),
+                    },
+                })
+                .execute(conn)
+                .unwrap();
+        }
+    }
+
+    account
+}
+
+pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
+    use self::NamespaceKind::*;
+    use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
+    use iam::schema::namespace;
+
+    let (id, label, account_id) = match kind {
+        Iam(account_id) => (*IAM_NAMESPACE_ID, "iam.ng.services", account_id),
+        Foxford(account_id) => (*FOXFORD_NAMESPACE_ID, "foxford.ru", account_id),
+        Other {
+            id,
+            label,
+            account_id,
+        } => (id, label, account_id),
+    };
+
+    let namespace = diesel::insert_into(namespace::table)
         .values((
-            namespace::id.eq(*shared::IAM_NAMESPACE_ID),
-            namespace::label.eq("iam.ng.services"),
+            namespace::id.eq(id),
+            namespace::label.eq(label),
             namespace::account_id.eq(account_id),
             namespace::enabled.eq(true),
             namespace::created_at.eq(NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 0)),
         ))
-        .get_result(conn)
-        .unwrap()
+        .get_result::<Namespace>(conn)
+        .unwrap();
+
+    diesel::insert_into(abac_object::table)
+        .values(AbacObject {
+            inbound: AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "uri".to_owned(),
+                value: format!("namespace/{}", namespace.id),
+            },
+            outbound: AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "uri".to_owned(),
+                value: format!("account/{}", namespace.account_id),
+            },
+        })
+        .execute(conn)
+        .unwrap();
+
+    namespace
 }
 
-pub fn grant_namespace_ownership(conn: &PgConnection, namespace_id: Uuid, account_id: Uuid) {
-    use chrono::{NaiveDate, NaiveDateTime};
-    use iam::models::*;
-    use iam::schema::*;
+pub fn create_iam_account(conn: &PgConnection) -> Account {
+    create_account(conn, AccountKind::Iam)
+}
 
-    diesel::insert_into(abac_subject_attr::table)
-        .values(NewAbacSubjectAttr {
-            namespace_id: namespace_id,
-            subject_id: account_id,
-            key: "owner:namespace".to_owned(),
-            value: namespace_id.to_string(),
-        })
-        .execute(conn)
-        .unwrap();
+pub fn create_iam_namespace(conn: &PgConnection, account_id: Uuid) -> Namespace {
+    create_namespace(conn, NamespaceKind::Iam(account_id))
+}
 
-    diesel::insert_into(abac_object_attr::table)
-        .values(NewAbacObjectAttr {
-            namespace_id: namespace_id,
-            object_id: format!("namespace.{}", namespace_id),
-            key: "belongs_to:namespace".to_owned(),
-            value: namespace_id.to_string(),
-        })
-        .execute(conn)
-        .unwrap();
+pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
+    use abac::models::AbacAction;
+    use abac::schema::abac_action;
+    use abac::types::AbacAttribute;
 
-    diesel::insert_into(abac_action_attr::table)
-        .values(NewAbacActionAttr {
-            namespace_id: namespace_id,
-            action_id: "execute".to_owned(),
-            key: "action".to_owned(),
-            value: "*".to_owned(),
-        })
-        .execute(conn)
-        .unwrap();
-
-    diesel::insert_into(abac_policy::table)
-        .values((
-            abac_policy::namespace_id.eq(namespace_id),
-            abac_policy::subject_namespace_id.eq(namespace_id),
-            abac_policy::subject_key.eq("owner:namespace".to_owned()),
-            abac_policy::subject_value.eq(namespace_id.to_string()),
-            abac_policy::object_namespace_id.eq(namespace_id),
-            abac_policy::object_key.eq("belongs_to:namespace".to_owned()),
-            abac_policy::object_value.eq(namespace_id.to_string()),
-            abac_policy::action_namespace_id.eq(namespace_id),
-            abac_policy::action_key.eq("action".to_owned()),
-            abac_policy::action_value.eq("*".to_owned()),
-            abac_policy::created_at.eq(NaiveDate::from_ymd(2018, 5, 29).and_hms(7, 15, 0)),
-            abac_policy::not_before.eq(None::<NaiveDateTime>),
-            abac_policy::expired_at.eq(None::<NaiveDateTime>),
-        ))
+    diesel::insert_into(abac_action::table)
+        .values(vec![
+            AbacAction {
+                inbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "create".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                },
+            },
+            AbacAction {
+                inbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "read".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                },
+            },
+            AbacAction {
+                inbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "update".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                },
+            },
+            AbacAction {
+                inbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "delete".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                },
+            },
+            AbacAction {
+                inbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "list".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                },
+            },
+        ])
         .execute(conn)
         .unwrap();
 }

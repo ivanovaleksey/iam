@@ -1,26 +1,24 @@
+use abac::{models::AbacSubject, types::AbacAttribute};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::{AbacSubjectAttr, NewAbacSubjectAttr};
 use rpc::abac_subject_attr::create;
 use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Insert {
-    pub namespace_id: Uuid,
-    pub subject_id: Uuid,
-    pub key: String,
-    pub value: String,
+    pub inbound: AbacAttribute,
+    pub outbound: AbacAttribute,
 }
 
 impl Message for Insert {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacSubject>;
 }
 
 impl Handler<Insert> for DbExecutor {
-    type Result = Result<AbacSubjectAttr>;
+    type Result = Result<AbacSubject>;
 
     fn handle(&mut self, msg: Insert, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -31,21 +29,23 @@ impl Handler<Insert> for DbExecutor {
 impl From<create::Request> for Insert {
     fn from(req: create::Request) -> Self {
         Insert {
-            namespace_id: req.namespace_id,
-            subject_id: req.subject_id,
-            key: req.key,
-            value: req.value,
+            inbound: req.inbound,
+            outbound: req.outbound,
         }
     }
 }
 
-fn call(conn: &PgConnection, msg: Insert) -> Result<AbacSubjectAttr> {
-    use schema::abac_subject_attr::dsl::*;
+fn call(conn: &PgConnection, msg: Insert) -> Result<AbacSubject> {
+    use abac::schema::abac_subject::dsl::*;
 
-    let changeset = NewAbacSubjectAttr::from(msg);
-    let object = diesel::insert_into(abac_subject_attr)
+    let changeset = AbacSubject {
+        inbound: msg.inbound,
+        outbound: msg.outbound,
+    };
+
+    let subject = diesel::insert_into(abac_subject)
         .values(changeset)
         .get_result(conn)?;
 
-    Ok(object)
+    Ok(subject)
 }

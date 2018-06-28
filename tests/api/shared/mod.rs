@@ -3,6 +3,7 @@ use diesel;
 use iam;
 use uuid::Uuid;
 
+pub mod api;
 pub mod db;
 
 lazy_static! {
@@ -10,6 +11,15 @@ lazy_static! {
         Uuid::parse_str("25a0c367-756a-42e1-ac5a-e7a2b6b64420").unwrap();
     pub static ref IAM_NAMESPACE_ID: Uuid =
         Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap();
+    pub static ref FOXFORD_ACCOUNT_ID: Uuid = Uuid::new_v4();
+    pub static ref FOXFORD_NAMESPACE_ID: Uuid = Uuid::new_v4();
+}
+
+#[macro_export]
+macro_rules! get_conn {
+    ($pool:ident) => {
+        $pool.get().expect("Failed to get connection from pool")
+    };
 }
 
 pub struct Server {
