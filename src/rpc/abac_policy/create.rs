@@ -1,61 +1,35 @@
-use chrono::NaiveDateTime;
+use abac::{models::AbacPolicy, types::AbacAttribute};
 use futures::future::{self, Future};
 use jsonrpc;
 use uuid::Uuid;
 
 use actors::db::{abac_policy, authz::Authz};
-use models::AbacPolicy;
 use rpc;
+use settings;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
     pub namespace_id: Uuid,
-    pub subject_namespace_id: Uuid,
-    pub subject_key: String,
-    pub subject_value: String,
-    pub object_namespace_id: Uuid,
-    pub object_key: String,
-    pub object_value: String,
-    pub action_namespace_id: Uuid,
-    pub action_key: String,
-    pub action_value: String,
-    pub not_before: Option<NaiveDateTime>,
-    pub expired_at: Option<NaiveDateTime>,
+    pub subject: Vec<AbacAttribute>,
+    pub object: Vec<AbacAttribute>,
+    pub action: Vec<AbacAttribute>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct Response {
-    namespace_id: Uuid,
-    subject_namespace_id: Uuid,
-    subject_key: String,
-    subject_value: String,
-    object_namespace_id: Uuid,
-    object_key: String,
-    object_value: String,
-    action_namespace_id: Uuid,
-    action_key: String,
-    action_value: String,
-    created_at: NaiveDateTime,
-    not_before: Option<NaiveDateTime>,
-    expired_at: Option<NaiveDateTime>,
+    pub namespace_id: Uuid,
+    pub subject: Vec<AbacAttribute>,
+    pub object: Vec<AbacAttribute>,
+    pub action: Vec<AbacAttribute>,
 }
 
 impl From<AbacPolicy> for Response {
     fn from(policy: AbacPolicy) -> Self {
         Response {
             namespace_id: policy.namespace_id,
-            subject_namespace_id: policy.subject_namespace_id,
-            subject_key: policy.subject_key,
-            subject_value: policy.subject_value,
-            object_namespace_id: policy.object_namespace_id,
-            object_key: policy.object_key,
-            object_value: policy.object_value,
-            action_namespace_id: policy.action_namespace_id,
-            action_key: policy.action_key,
-            action_value: policy.action_value,
-            created_at: policy.created_at,
-            not_before: policy.not_before,
-            expired_at: policy.expired_at,
+            subject: policy.subject,
+            object: policy.object,
+            action: policy.action,
         }
     }
 }
@@ -67,7 +41,27 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             let namespace_id = req.namespace_id;
             move |subject_id| {
-                let msg = Authz::execute_namespace_message(namespace_id, subject_id);
+                let iam_namespace_id = settings::iam_namespace_id();
+
+                let msg = Authz {
+                    namespace_ids: vec![iam_namespace_id],
+                    subject: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", subject_id),
+                    }],
+                    object: vec![AbacAttribute {
+                        namespace_id,
+                        key: "type".to_owned(),
+                        value: "abac_policy".to_owned(),
+                    }],
+                    action: vec![AbacAttribute {
+                        namespace_id: iam_namespace_id,
+                        key: "operation".to_owned(),
+                        value: "create".to_owned(),
+                    }],
+                };
+
                 db.send(msg)
                     .map_err(|_| jsonrpc::Error::internal_error())
                     .and_then(rpc::ensure_authorized)
