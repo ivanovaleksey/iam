@@ -1,7 +1,6 @@
 use abac::{models::AbacSubject, types::AbacAttribute};
 use futures::future::{self, Future};
 use jsonrpc;
-use uuid::Uuid;
 
 use actors::db::{abac_subject_attr, authz::Authz};
 use rpc;

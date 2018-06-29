@@ -8,9 +8,9 @@ abac_object_attr.list
 
 ### Params
 
-Name         | Type   | Default    | Description
------------- | ------ | ---------- | ------------------
-fq           | string | _required_ | -
+Name   | Type   | Default    | Description
+-------| ------ | ---------- | ------------------
+filter | string | _required_ | -
 
 ### Example
 
@@ -21,7 +21,11 @@ fq           | string | _required_ | -
     "jsonrpc": "2.0",
     "method": "abac_object_attr.list",
     "params": [{
-        "fq": "namespace_id:bab37008-3dc5-492c-af73-80c241241d71 AND object_id:room AND key:type"
+        "filter": {
+            "namespace_ids": [
+                "bab37008-3dc5-492c-af73-80c241241d71"
+            ]
+        }
     }],
     "id": "qwerty"
 }
@@ -34,10 +38,16 @@ fq           | string | _required_ | -
     "jsonrpc": "2.0",
     "result": [
         {
-            "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
-            "object_id": "room",
-            "key": "type",
-            "value": "room"
+            "inbound": {
+                "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                "key": "uri",
+                "value": "room/5eb64c75-de2c-4a8a-b97b-dd3599e10450"
+            },
+            "outbound": {
+                "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                "key": "type",
+                "value": "room"
+            }
         }
     ],
     "id": "qwerty"

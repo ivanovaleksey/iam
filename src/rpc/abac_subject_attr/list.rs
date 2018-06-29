@@ -1,7 +1,6 @@
 use abac::types::AbacAttribute;
 use futures::future::{self, Future};
 use jsonrpc;
-use serde_json;
 use uuid::Uuid;
 
 use std::str;

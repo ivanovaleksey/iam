@@ -1,26 +1,23 @@
+use abac::{models::AbacObject, types::AbacAttribute};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
-use uuid::Uuid;
 
 use actors::DbExecutor;
-use models::AbacObjectAttr;
 use rpc::abac_object_attr::delete;
 use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Delete {
-    pub namespace_id: Uuid,
-    pub object_id: String,
-    pub key: String,
-    pub value: String,
+    pub inbound: AbacAttribute,
+    pub outbound: AbacAttribute,
 }
 
 impl Message for Delete {
-    type Result = Result<AbacObjectAttr>;
+    type Result = Result<AbacObject>;
 }
 
 impl Handler<Delete> for DbExecutor {
-    type Result = Result<AbacObjectAttr>;
+    type Result = Result<AbacObject>;
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -31,19 +28,17 @@ impl Handler<Delete> for DbExecutor {
 impl From<delete::Request> for Delete {
     fn from(req: delete::Request) -> Self {
         Delete {
-            namespace_id: req.namespace_id,
-            object_id: req.object_id,
-            key: req.key,
-            value: req.value,
+            inbound: req.inbound,
+            outbound: req.outbound,
         }
     }
 }
 
-fn call(conn: &PgConnection, msg: Delete) -> Result<AbacObjectAttr> {
-    use schema::abac_object_attr::dsl::*;
+fn call(conn: &PgConnection, msg: Delete) -> Result<AbacObject> {
+    use abac::schema::abac_object::dsl::*;
 
-    let pk = (msg.namespace_id, msg.object_id, msg.key, msg.value);
-    let target = abac_object_attr.find(pk);
+    let pk = (msg.inbound, msg.outbound);
+    let target = abac_object.find(pk);
     let object = diesel::delete(target).get_result(conn)?;
 
     Ok(object)

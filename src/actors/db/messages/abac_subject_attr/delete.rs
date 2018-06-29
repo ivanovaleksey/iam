@@ -1,7 +1,6 @@
 use abac::{models::AbacSubject, types::AbacAttribute};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
-use uuid::Uuid;
 
 use actors::DbExecutor;
 use rpc::abac_subject_attr::delete;
