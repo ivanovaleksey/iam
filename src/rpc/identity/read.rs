@@ -1,3 +1,4 @@
+use abac::types::AbacAttribute;
 use diesel;
 use futures::future::{self, Future};
 use jsonrpc;
@@ -6,6 +7,7 @@ use uuid::Uuid;
 use actors::db::{authz::Authz, identity};
 use models::identity::PrimaryKey;
 use rpc;
+use settings;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
@@ -46,11 +48,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             move |(identity, subject_id)| {
                 use future::Either;
 
-                use abac::types::AbacAttribute;
-                use settings::SETTINGS;
-
-                let settings = SETTINGS.read().unwrap();
-                let iam_namespace_id = settings.iam_namespace_id;
+                let iam_namespace_id = settings::iam_namespace_id();
 
                 if let Some(identity) = identity {
                     let pk = PrimaryKey::from(identity.clone());

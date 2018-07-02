@@ -1,3 +1,4 @@
+use abac::types::AbacAttribute;
 use diesel;
 use futures::future::{self, Either, Future};
 use jsonrpc;
@@ -5,6 +6,7 @@ use jsonrpc;
 use actors::db::{authz::Authz, identity};
 use models::identity::PrimaryKey;
 use rpc;
+use settings;
 
 pub type Request = rpc::identity::read::Request;
 pub type Response = rpc::identity::read::Response;
@@ -37,11 +39,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.clone().unwrap();
             move |(identity, subject_id)| {
-                use abac::types::AbacAttribute;
-                use settings::SETTINGS;
-
-                let settings = SETTINGS.read().unwrap();
-                let iam_namespace_id = settings.iam_namespace_id;
+                let iam_namespace_id = settings::iam_namespace_id();
 
                 if let Some(identity) = identity {
                     let pk = PrimaryKey::from(identity.clone());

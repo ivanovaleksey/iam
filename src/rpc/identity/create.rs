@@ -1,3 +1,4 @@
+use abac::types::AbacAttribute;
 use chrono::NaiveDateTime;
 use diesel;
 use futures::future::{self, Future};
@@ -7,6 +8,7 @@ use uuid::Uuid;
 use actors::db::{authz::Authz, identity};
 use models::{identity::PrimaryKey, Identity};
 use rpc;
+use settings;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Request {
@@ -43,11 +45,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             let namespace_id = req.provider;
             move |subject_id| {
-                use abac::types::AbacAttribute;
-                use settings::SETTINGS;
-
-                let settings = SETTINGS.read().unwrap();
-                let iam_namespace_id = settings.iam_namespace_id;
+                let iam_namespace_id = settings::iam_namespace_id();
 
                 let msg = Authz {
                     namespace_ids: vec![iam_namespace_id],

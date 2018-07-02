@@ -1,3 +1,4 @@
+use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
@@ -25,7 +26,6 @@ pub enum NamespaceKind<'a> {
 
 pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
     use self::AccountKind::*;
-    use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
     use iam::schema::account;
 
     let id = match kind {
@@ -65,7 +65,6 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
 
 pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     use self::NamespaceKind::*;
-    use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
     use iam::schema::namespace;
 
     let (id, label, account_id) = match kind {
