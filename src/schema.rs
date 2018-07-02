@@ -1,22 +1,4 @@
 table! {
-    abac_policy (namespace_id, subject_namespace_id, subject_key, subject_value, object_namespace_id, object_key, object_value, action_namespace_id, action_key, action_value) {
-        namespace_id -> Uuid,
-        subject_namespace_id -> Uuid,
-        subject_key -> Text,
-        subject_value -> Text,
-        object_namespace_id -> Uuid,
-        object_key -> Text,
-        object_value -> Text,
-        action_namespace_id -> Uuid,
-        action_key -> Text,
-        action_value -> Text,
-        created_at -> Timestamp,
-        not_before -> Nullable<Timestamp>,
-        expired_at -> Nullable<Timestamp>,
-    }
-}
-
-table! {
     account (id) {
         id -> Uuid,
         enabled -> Bool,
@@ -57,4 +39,4 @@ joinable!(identity -> namespace (provider));
 joinable!(namespace -> account (account_id));
 joinable!(refresh_token -> account (account_id));
 
-allow_tables_to_appear_in_same_query!(abac_policy, account, identity, namespace, refresh_token,);
+allow_tables_to_appear_in_same_query!(account, identity, namespace, refresh_token,);
