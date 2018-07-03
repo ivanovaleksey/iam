@@ -41,6 +41,8 @@ impl From<Request> for Authz {
 fn call(conn: &PgConnection, msg: &Authz) -> QueryResult<bool> {
     use abac::functions::abac_authorize;
 
+    debug!("AuthZ: {:?}", msg);
+
     let granted = diesel::select(abac_authorize(
         &msg.subject,
         &msg.object,

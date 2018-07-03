@@ -30,3 +30,7 @@ pretty_assertions = "*"
 [[test]]
 name = "api_tests"
 path = "tests/api/lib.rs"
+
+[[test]]
+name = "features"
+path = "tests/features/lib.rs"

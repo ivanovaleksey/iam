@@ -55,6 +55,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         value: format!("account/{}", subject_id),
                     }],
                     object: vec![AbacAttribute {
+                        // TODO: what should be here?
                         namespace_id,
                         key: "type".to_owned(),
                         value: "identity".to_owned(),

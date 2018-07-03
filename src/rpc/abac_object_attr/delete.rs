@@ -14,7 +14,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.outbound.namespace_id;
+            let namespace_id = req.inbound.namespace_id;
             move |subject_id| {
                 let iam_namespace_id = settings::iam_namespace_id();
 
