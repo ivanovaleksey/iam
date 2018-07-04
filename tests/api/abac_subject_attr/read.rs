@@ -2,13 +2,16 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacPolicy, AbacSubject};
-use abac::schema::{abac_object, abac_policy, abac_subject};
+use abac::models::{AbacObject, AbacSubject};
+use abac::schema::{abac_object, abac_subject};
 use abac::types::AbacAttribute;
 
 use iam::models::{Account, Namespace};
 
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID};
+use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
+use shared::{
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID,
+};
 
 lazy_static! {
     static ref USER_ACCOUNT_ID: Uuid = Uuid::new_v4();
@@ -41,10 +44,6 @@ lazy_static! {
 
 #[must_use]
 fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-    use shared::db::{
-        create_account, create_namespace, create_operations, AccountKind, NamespaceKind,
-    };
-
     conn.begin_test_transaction()
         .expect("Failed to begin transaction");
 
@@ -55,6 +54,9 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
 
     let foxford_account = create_account(conn, AccountKind::Foxford);
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
+
+    let netology_account = create_account(conn, AccountKind::Netology);
+    let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
     diesel::insert_into(abac_object::table)
         .values(AbacObject {
@@ -78,59 +80,26 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     )
 }
 
-mod with_namespace_ownership {
+mod with_existing_record {
     use super::*;
+    use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-        let ((iam_account, iam_namespace), (foxford_account, foxford_namespace)) =
-            before_each_1(conn);
-
-        diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
-                subject: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", foxford_account.id),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", foxford_account.id),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-                namespace_id: iam_namespace.id,
-            })
-            .execute(conn)
-            .unwrap();
-
-        (
-            (iam_account, iam_namespace),
-            (foxford_account, foxford_namespace),
-        )
+    fn before_each_2(conn: &PgConnection) -> AbacSubject {
+        let _ = before_each_1(conn);
+        create_record(conn)
     }
 
-    mod with_existing_record {
+    mod with_client {
         use super::*;
-        use actix_web::HttpMessage;
-
-        #[must_use]
-        fn before_each_3(conn: &PgConnection) -> AbacSubject {
-            let _ = before_each_2(conn);
-            create_subject(conn)
-        }
 
         #[test]
-        fn when_authorized_request() {
+        fn can_read_own_record() {
             let shared::Server { mut srv, pool } = shared::build_server();
 
             {
                 let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
+                let _ = before_each_2(&conn);
             }
 
             let req = shared::build_auth_request(
@@ -144,17 +113,18 @@ mod with_namespace_ownership {
         }
 
         #[test]
-        fn when_anonymous_request() {
+        fn cannot_read_alien_record() {
             let shared::Server { mut srv, pool } = shared::build_server();
 
             {
                 let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
+                let _ = before_each_2(&conn);
             }
 
-            let req = shared::build_anonymous_request(
+            let req = shared::build_auth_request(
                 &srv,
                 serde_json::to_string(&build_request()).unwrap(),
+                Some(*NETOLOGY_ACCOUNT_ID),
             );
             let resp = srv.execute(req.send()).unwrap();
             let body = srv.execute(resp.body()).unwrap();
@@ -162,12 +132,37 @@ mod with_namespace_ownership {
         }
     }
 
-    mod without_existing_record {
+    #[test]
+    fn anonymous_cannot_read_record() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req =
+            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+    }
+}
+
+mod without_existing_record {
+    use super::*;
+    use actix_web::HttpMessage;
+
+    #[must_use]
+    fn before_each_2(conn: &PgConnection) {
+        let _ = before_each_1(conn);
+    }
+
+    mod with_client {
         use super::*;
-        use actix_web::HttpMessage;
 
         #[test]
-        fn when_authorized_request() {
+        fn can_read_own_record() {
             let shared::Server { mut srv, pool } = shared::build_server();
 
             {
@@ -186,40 +181,7 @@ mod with_namespace_ownership {
         }
 
         #[test]
-        fn when_anonymous_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let req = shared::build_anonymous_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-        }
-    }
-}
-
-mod without_namespace_ownership {
-    use super::*;
-
-    mod with_existing_record {
-        use super::*;
-        use actix_web::HttpMessage;
-
-        #[must_use]
-        fn before_each_2(conn: &PgConnection) -> AbacSubject {
-            let _ = before_each_1(conn);
-            create_subject(conn)
-        }
-
-        #[test]
-        fn when_authorized_request() {
+        fn cannot_read_alien_record() {
             let shared::Server { mut srv, pool } = shared::build_server();
 
             {
@@ -230,25 +192,7 @@ mod without_namespace_ownership {
             let req = shared::build_auth_request(
                 &srv,
                 serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-        }
-
-        #[test]
-        fn when_anonymous_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let req = shared::build_anonymous_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
+                Some(*NETOLOGY_ACCOUNT_ID),
             );
             let resp = srv.execute(req.send()).unwrap();
             let body = srv.execute(resp.body()).unwrap();
@@ -256,51 +200,25 @@ mod without_namespace_ownership {
         }
     }
 
-    mod without_existing_record {
-        use super::*;
-        use actix_web::HttpMessage;
+    #[test]
+    fn anonymous_cannot_read_record() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-        #[test]
-        fn when_authorized_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_1(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
         }
 
-        #[test]
-        fn when_anonymous_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_1(&conn);
-            }
-
-            let req = shared::build_anonymous_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-        }
+        let req =
+            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
     }
 }
 
 fn build_request() -> serde_json::Value {
-    let subject = build_subject();
+    let subject = build_record();
     json!({
         "jsonrpc": "2.0",
         "method": "abac_subject_attr.read",
@@ -309,7 +227,7 @@ fn build_request() -> serde_json::Value {
     })
 }
 
-fn build_subject() -> AbacSubject {
+fn build_record() -> AbacSubject {
     AbacSubject {
         inbound: AbacAttribute {
             namespace_id: *IAM_NAMESPACE_ID,
@@ -324,9 +242,9 @@ fn build_subject() -> AbacSubject {
     }
 }
 
-fn create_subject(conn: &PgConnection) -> AbacSubject {
+fn create_record(conn: &PgConnection) -> AbacSubject {
     diesel::insert_into(abac_subject::table)
-        .values(build_subject())
+        .values(build_record())
         .get_result(conn)
         .unwrap()
 }

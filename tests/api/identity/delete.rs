@@ -4,36 +4,40 @@ use diesel::prelude::*;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacPolicy};
-use abac::schema::{abac_object, abac_policy};
+use abac::models::AbacObject;
+use abac::schema::abac_object;
 use abac::types::AbacAttribute;
 
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
 use iam::schema::{account, identity};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID};
+use shared::{
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID,
+    NETOLOGY_NAMESPACE_ID,
+};
 
 lazy_static! {
-    static ref FOXFORD_USER_ID: Uuid = Uuid::new_v4();
-    static ref USER_ACCOUNT_ID: Uuid = Uuid::new_v4();
+    static ref FOXFORD_USER_ID_1: Uuid = Uuid::new_v4();
+    static ref USER_ACCOUNT_ID_1: Uuid = Uuid::new_v4();
+    static ref USER_ACCOUNT_ID_2: Uuid = Uuid::new_v4();
     static ref EXPECTED: String = {
         let template = r#"{
             "jsonrpc": "2.0",
             "result": {
-                "account_id": "USER_ACCOUNT_ID",
+                "account_id": "USER_ACCOUNT_ID_1",
                 "created_at": "2018-06-02T08:40:00",
                 "label": "oauth2",
                 "provider": "FOXFORD_NAMESPACE_ID",
-                "uid": "FOXFORD_USER_ID"
+                "uid": "FOXFORD_USER_ID_1"
             },
             "id": "qwerty"
         }"#;
 
         let json = template
-            .replace("FOXFORD_USER_ID", &FOXFORD_USER_ID.to_string())
+            .replace("FOXFORD_USER_ID_1", &FOXFORD_USER_ID_1.to_string())
             .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
-            .replace("USER_ACCOUNT_ID", &USER_ACCOUNT_ID.to_string());
+            .replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string());
 
         shared::strip_json(&json)
     };
@@ -51,6 +55,11 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
 
     let foxford_account = create_account(conn, AccountKind::Foxford);
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
+
+    let netology_account = create_account(conn, AccountKind::Netology);
+    let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
+
+    let _user_account_2 = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_2));
 
     diesel::insert_into(abac_object::table)
         .values(AbacObject {
@@ -74,433 +83,274 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     )
 }
 
-mod with_permission {
+mod with_existing_record {
     use super::*;
+    use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-        let ((iam_account, iam_namespace), (foxford_account, foxford_namespace)) =
-            before_each_1(conn);
-
-        diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
-                subject: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", foxford_account.id),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", foxford_account.id),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-                namespace_id: iam_namespace.id,
-            })
-            .execute(conn)
-            .unwrap();
-
-        diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
-                subject: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", *USER_ACCOUNT_ID),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", *USER_ACCOUNT_ID),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-                namespace_id: iam_namespace.id,
-            })
-            .execute(conn)
-            .unwrap();
-
-        (
-            (iam_account, iam_namespace),
-            (foxford_account, foxford_namespace),
-        )
+    fn before_each_2(conn: &PgConnection) -> Identity {
+        let _ = before_each_1(conn);
+        create_user_identity(conn)
     }
 
-    mod with_existing_record {
+    mod with_client {
         use super::*;
-        use actix_web::HttpMessage;
 
-        #[must_use]
-        fn before_each_3(conn: &PgConnection) -> Identity {
-            let _ = before_each_2(conn);
-            create_user_identity(conn)
-        }
+        #[test]
+        fn can_delete_last_identity() {
+            let shared::Server { mut srv, pool } = shared::build_server();
 
-        mod with_authorized_client {
-            use super::*;
-
-            #[test]
-            fn when_last_identity() {
-                let shared::Server { mut srv, pool } = shared::build_server();
-
-                {
-                    let conn = get_conn!(pool);
-                    let _ = before_each_3(&conn);
-                }
-
-                let req = shared::build_auth_request(
-                    &srv,
-                    serde_json::to_string(&build_request()).unwrap(),
-                    Some(*FOXFORD_ACCOUNT_ID),
-                );
-                let resp = srv.execute(req.send()).unwrap();
-                let body = srv.execute(resp.body()).unwrap();
-                assert_eq!(body, *EXPECTED);
-
+            {
                 let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(0));
-
-                let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
-                assert_eq!(found, Ok(0));
+                let _ = before_each_2(&conn);
             }
 
-            #[test]
-            fn when_not_last_identity() {
-                let shared::Server { mut srv, pool } = shared::build_server();
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&build_request()).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *EXPECTED);
 
-                {
-                    let conn = get_conn!(pool);
-                    let _ = before_each_3(&conn);
-                    create_additional_user_identity(&conn);
-                }
-
-                let req = shared::build_auth_request(
-                    &srv,
-                    serde_json::to_string(&build_request()).unwrap(),
-                    Some(*FOXFORD_ACCOUNT_ID),
-                );
-                let resp = srv.execute(req.send()).unwrap();
-                let body = srv.execute(resp.body()).unwrap();
-                assert_eq!(body, *EXPECTED);
-
+            {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(0));
 
-                let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
-                assert_eq!(found, Ok(1));
+                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
+                assert_eq!(found, Ok(0));
             }
         }
 
-        mod with_authorized_user {
-            use super::*;
+        #[test]
+        fn can_delete_not_last_identity() {
+            let shared::Server { mut srv, pool } = shared::build_server();
 
-            #[test]
-            fn when_last_identity() {
-                let shared::Server { mut srv, pool } = shared::build_server();
-
-                {
-                    let conn = get_conn!(pool);
-                    let _ = before_each_3(&conn);
-                }
-
-                let req = shared::build_auth_request(
-                    &srv,
-                    serde_json::to_string(&build_request()).unwrap(),
-                    Some(*USER_ACCOUNT_ID),
-                );
-                let resp = srv.execute(req.send()).unwrap();
-                let body = srv.execute(resp.body()).unwrap();
-                assert_eq!(body, *EXPECTED);
-
+            {
                 let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(0));
-
-                let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
-                assert_eq!(found, Ok(0));
+                let _ = before_each_2(&conn);
+                create_additional_user_identity(&conn);
             }
 
-            #[test]
-            fn when_not_last_identity() {
-                let shared::Server { mut srv, pool } = shared::build_server();
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&build_request()).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *EXPECTED);
 
-                {
-                    let conn = get_conn!(pool);
-                    let _ = before_each_3(&conn);
-                    create_additional_user_identity(&conn);
-                }
-
-                let req = shared::build_auth_request(
-                    &srv,
-                    serde_json::to_string(&build_request()).unwrap(),
-                    Some(*USER_ACCOUNT_ID),
-                );
-                let resp = srv.execute(req.send()).unwrap();
-                let body = srv.execute(resp.body()).unwrap();
-                assert_eq!(body, *EXPECTED);
-
+            {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(0));
 
-                let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
+                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(1));
             }
         }
 
         #[test]
-        fn when_anonymous_request() {
+        fn cannot_delete_alien_provider_identity() {
             let shared::Server { mut srv, pool } = shared::build_server();
 
             {
                 let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
+                let _ = before_each_2(&conn);
             }
 
-            let req = shared::build_anonymous_request(
+            let req = shared::build_auth_request(
                 &srv,
                 serde_json::to_string(&build_request()).unwrap(),
+                Some(*NETOLOGY_ACCOUNT_ID),
             );
             let resp = srv.execute(req.send()).unwrap();
             let body = srv.execute(resp.body()).unwrap();
             assert_eq!(body, *shared::api::FORBIDDEN);
 
+            {
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn), Ok(1));
+
+                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
+                assert_eq!(found, Ok(1));
+            }
+        }
+    }
+
+    mod with_user {
+        use super::*;
+
+        #[test]
+        fn can_delete_last_identity() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_2(&conn);
+            }
+
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&build_request()).unwrap(),
+                Some(*USER_ACCOUNT_ID_1),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *EXPECTED);
+
+            {
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn), Ok(0));
+
+                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
+                assert_eq!(found, Ok(0));
+            }
+        }
+
+        #[test]
+        fn can_delete_not_last_identity() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_2(&conn);
+                create_additional_user_identity(&conn);
+            }
+
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&build_request()).unwrap(),
+                Some(*USER_ACCOUNT_ID_1),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *EXPECTED);
+
+            {
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn), Ok(0));
+
+                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
+                assert_eq!(found, Ok(1));
+            }
+        }
+
+        #[test]
+        fn cannot_delete_alien_user_identity() {
+            let shared::Server { mut srv, pool } = shared::build_server();
+
+            {
+                let conn = get_conn!(pool);
+                let _ = before_each_2(&conn);
+            }
+
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&build_request()).unwrap(),
+                Some(*USER_ACCOUNT_ID_2),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            assert_eq!(body, *shared::api::FORBIDDEN);
+
+            {
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn), Ok(1));
+
+                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
+                assert_eq!(found, Ok(1));
+            }
+        }
+    }
+
+    #[test]
+    fn anonymous_cannot_delete_identity() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req =
+            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
             let conn = get_conn!(pool);
             assert_eq!(find_record(&conn), Ok(1));
 
-            let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
+            let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
             assert_eq!(found, Ok(1));
-        }
-    }
-
-    mod without_existing_record {
-        use super::*;
-        use actix_web::HttpMessage;
-
-        #[must_use]
-        fn before_each_3(conn: &PgConnection) {
-            let _ = before_each_2(conn);
-        }
-
-        #[test]
-        fn when_authorized_client() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::NOT_FOUND);
-        }
-
-        #[test]
-        fn when_authorized_user() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::NOT_FOUND);
-        }
-
-        #[test]
-        fn when_anonymous_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_anonymous_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
         }
     }
 }
 
-mod without_permission {
+mod without_existing_record {
     use super::*;
+    use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-        before_each_1(conn)
+    fn before_each_2(conn: &PgConnection) {
+        let _ = before_each_1(conn);
     }
 
-    mod with_existing_record {
-        use super::*;
-        use actix_web::HttpMessage;
+    #[test]
+    fn client_cannot_delete_identity() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-        #[must_use]
-        fn before_each_3(conn: &PgConnection) -> Identity {
-            let _ = before_each_2(conn);
-            create_user_identity(conn)
-        }
-
-        #[test]
-        fn when_authorized_client() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-
+        {
             let conn = get_conn!(pool);
-            assert_eq!(find_record(&conn), Ok(1));
-
-            let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
-            assert_eq!(found, Ok(1));
+            let _ = before_each_2(&conn);
         }
 
-        #[test]
-        fn when_authorized_user() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*USER_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-
-            let conn = get_conn!(pool);
-            assert_eq!(find_record(&conn), Ok(1));
-
-            let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
-            assert_eq!(found, Ok(1));
-        }
-
-        #[test]
-        fn when_anonymous_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_anonymous_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-
-            let conn = get_conn!(pool);
-            assert_eq!(find_record(&conn), Ok(1));
-
-            let found = account::table.find(*USER_ACCOUNT_ID).execute(&conn);
-            assert_eq!(found, Ok(1));
-        }
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::NOT_FOUND);
     }
 
-    mod without_existing_record {
-        use super::*;
-        use actix_web::HttpMessage;
+    #[test]
+    fn user_cannot_delete_identity() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-        #[must_use]
-        fn before_each_3(conn: &PgConnection) {
-            let _ = before_each_2(conn);
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
         }
 
-        #[test]
-        fn when_authorized_client() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*USER_ACCOUNT_ID_1),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+    }
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
+    #[test]
+    fn anonymous_cannot_delete_identity() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
         }
 
-        #[test]
-        fn when_authorized_user() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*USER_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-        }
-
-        #[test]
-        fn when_anonymous_request() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_3(&conn);
-            }
-
-            let req = shared::build_anonymous_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-        }
+        let req =
+            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
     }
 }
 
@@ -518,7 +368,7 @@ fn build_pk() -> PrimaryKey {
     PrimaryKey {
         provider: *FOXFORD_NAMESPACE_ID,
         label: "oauth2".to_owned(),
-        uid: FOXFORD_USER_ID.to_string(),
+        uid: FOXFORD_USER_ID_1.to_string(),
     }
 }
 
@@ -528,27 +378,37 @@ fn find_record(conn: &PgConnection) -> diesel::QueryResult<usize> {
 }
 
 fn create_user_identity(conn: &PgConnection) -> Identity {
-    let account = diesel::insert_into(account::table)
-        .values((account::id.eq(*USER_ACCOUNT_ID), account::enabled.eq(true)))
-        .get_result::<Account>(conn)
-        .unwrap();
+    use iam::models::identity::PrimaryKey;
+
+    let account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
 
     let identity = diesel::insert_into(identity::table)
         .values((
             identity::provider.eq(*FOXFORD_NAMESPACE_ID),
             identity::label.eq("oauth2"),
-            identity::uid.eq(FOXFORD_USER_ID.to_string()),
+            identity::uid.eq(FOXFORD_USER_ID_1.to_string()),
             identity::account_id.eq(account.id),
             identity::created_at.eq(NaiveDate::from_ymd(2018, 6, 2).and_hms(8, 40, 0)),
         ))
         .get_result::<Identity>(conn)
         .unwrap();
 
-    use iam::models::identity::PrimaryKey;
     let pk = PrimaryKey::from(identity.clone());
 
     diesel::insert_into(abac_object::table)
         .values(vec![
+            AbacObject {
+                inbound: AbacAttribute {
+                    namespace_id: *FOXFORD_NAMESPACE_ID,
+                    key: "uri".to_owned(),
+                    value: format!("identity/{}", pk),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "type".to_owned(),
+                    value: "identity".to_owned(),
+                },
+            },
             AbacObject {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
@@ -581,22 +441,12 @@ fn create_user_identity(conn: &PgConnection) -> Identity {
 }
 
 fn create_additional_user_identity(conn: &PgConnection) -> Identity {
-    let netology_account = create_account(conn, AccountKind::Other(Uuid::new_v4()));
-    let netology_namespace = create_namespace(
-        conn,
-        NamespaceKind::Other {
-            id: Uuid::new_v4(),
-            label: "netology.ru",
-            account_id: netology_account.id,
-        },
-    );
-
     diesel::insert_into(identity::table)
         .values((
-            identity::provider.eq(netology_namespace.id),
+            identity::provider.eq(*NETOLOGY_NAMESPACE_ID),
             identity::label.eq("oauth2"),
             identity::uid.eq(Uuid::new_v4().to_string()),
-            identity::account_id.eq(*USER_ACCOUNT_ID),
+            identity::account_id.eq(*USER_ACCOUNT_ID_1),
             identity::created_at.eq(NaiveDate::from_ymd(2018, 6, 2).and_hms(8, 40, 0)),
         ))
         .get_result(conn)

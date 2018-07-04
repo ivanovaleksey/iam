@@ -2,18 +2,16 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacPolicy};
-use abac::schema::{abac_object, abac_policy};
+use abac::models::AbacObject;
+use abac::schema::abac_object;
 use abac::types::AbacAttribute;
 
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
+use shared::{self, FOXFORD_ACCOUNT_ID, IAM_ACCOUNT_ID};
 
 lazy_static! {
-    static ref NETOLOGY_ACCOUNT_ID: Uuid = Uuid::new_v4();
-    static ref NETOLOGY_NAMESPACE_ID: Uuid = Uuid::new_v4();
     static ref USER_ACCOUNT_ID_1: Uuid = Uuid::new_v4();
     static ref USER_ACCOUNT_ID_2: Uuid = Uuid::new_v4();
     static ref EXPECTED: String = {
@@ -44,17 +42,10 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let foxford_account = create_account(conn, AccountKind::Foxford);
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
-    let netology_account = create_account(conn, AccountKind::Other(*NETOLOGY_ACCOUNT_ID));
-    let _netology_namespace = create_namespace(
-        conn,
-        NamespaceKind::Other {
-            id: *NETOLOGY_NAMESPACE_ID,
-            label: "netology.ru",
-            account_id: netology_account.id,
-        },
-    );
+    let netology_account = create_account(conn, AccountKind::Netology);
+    let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
-    let user_account_2 = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_2));
+    let _user_account_2 = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_2));
 
     diesel::insert_into(abac_object::table)
         .values(AbacObject {
@@ -72,32 +63,6 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
         .execute(conn)
         .unwrap();
 
-    [&iam_account, &foxford_account, &user_account_2]
-        .iter()
-        .for_each(|account| {
-            diesel::insert_into(abac_policy::table)
-                .values(AbacPolicy {
-                    subject: vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", account.id),
-                    }],
-                    object: vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", account.id),
-                    }],
-                    action: vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "operation".to_owned(),
-                        value: "any".to_owned(),
-                    }],
-                    namespace_id: *IAM_NAMESPACE_ID,
-                })
-                .execute(conn)
-                .unwrap();
-        });
-
     (
         (iam_account, iam_namespace),
         (foxford_account, foxford_namespace),
@@ -112,31 +77,7 @@ mod with_existing_record {
     fn before_each_2(conn: &PgConnection) -> Account {
         let _ = before_each_1(conn);
 
-        let account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
-
-        diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
-                subject: vec![AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", account.id),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", account.id),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-                namespace_id: *IAM_NAMESPACE_ID,
-            })
-            .execute(conn)
-            .unwrap();
-
-        account
+        create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1))
     }
 
     #[test]
@@ -216,7 +157,7 @@ mod with_existing_record {
     }
 
     #[test]
-    fn when_anonymous_request() {
+    fn anonymous_cannot_read_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -299,7 +240,7 @@ mod without_existing_record {
     }
 
     #[test]
-    fn when_anonymous_request() {
+    fn anonymous_cannot_read_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {

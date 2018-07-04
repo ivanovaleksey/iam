@@ -1,4 +1,8 @@
-use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
+use abac::{
+    models::{AbacObject, AbacPolicy},
+    schema::{abac_object, abac_policy},
+    types::AbacAttribute,
+};
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
@@ -6,17 +10,22 @@ use uuid::Uuid;
 
 use iam::models::*;
 
-use shared::{FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
+use shared::{
+    FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID,
+    NETOLOGY_ACCOUNT_ID, NETOLOGY_NAMESPACE_ID,
+};
 
 pub enum AccountKind {
     Iam,
     Foxford,
+    Netology,
     Other(Uuid),
 }
 
 pub enum NamespaceKind<'a> {
     Iam(Uuid),
     Foxford(Uuid),
+    Netology(Uuid),
     Other {
         id: Uuid,
         label: &'a str,
@@ -31,12 +40,35 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
     let id = match kind {
         Iam => *IAM_ACCOUNT_ID,
         Foxford => *FOXFORD_ACCOUNT_ID,
+        Netology => *NETOLOGY_ACCOUNT_ID,
         Other(id) => id,
     };
 
     let account = diesel::insert_into(account::table)
         .values((account::id.eq(id), account::enabled.eq(true)))
         .get_result::<Account>(conn)
+        .unwrap();
+
+    diesel::insert_into(abac_policy::table)
+        .values(AbacPolicy {
+            subject: vec![AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "uri".to_owned(),
+                value: format!("account/{}", account.id),
+            }],
+            object: vec![AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "uri".to_owned(),
+                value: format!("account/{}", account.id),
+            }],
+            action: vec![AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "operation".to_owned(),
+                value: "any".to_owned(),
+            }],
+            namespace_id: *IAM_NAMESPACE_ID,
+        })
+        .execute(conn)
         .unwrap();
 
     match kind {
@@ -70,6 +102,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     let (id, label, account_id) = match kind {
         Iam(account_id) => (*IAM_NAMESPACE_ID, "iam.ng.services", account_id),
         Foxford(account_id) => (*FOXFORD_NAMESPACE_ID, "foxford.ru", account_id),
+        Netology(account_id) => (*NETOLOGY_NAMESPACE_ID, "netology.ru", account_id),
         Other {
             id,
             label,

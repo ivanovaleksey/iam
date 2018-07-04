@@ -86,7 +86,7 @@ pub fn insert(conn: &PgConnection, msg: Insert) -> QueryResult<Account> {
                         key: "uri".to_owned(),
                         value: format!("namespace/{}", iam_namespace_id),
                     },
-                }
+                },
             ])
             .execute(conn)?;
 

@@ -1,3 +1,4 @@
+use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
@@ -8,6 +9,7 @@ use abac::types::AbacAttribute;
 
 use iam::models::{Account, Namespace};
 
+use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID};
 
 lazy_static! {
@@ -53,10 +55,6 @@ lazy_static! {
 
 #[must_use]
 fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-    use shared::db::{
-        create_account, create_namespace, create_operations, AccountKind, NamespaceKind,
-    };
-
     conn.begin_test_transaction()
         .expect("Failed to begin transaction");
 
@@ -90,45 +88,16 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     )
 }
 
-mod with_namespace_ownership {
+mod with_client {
     use super::*;
-    use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-        let ((iam_account, iam_namespace), (foxford_account, foxford_namespace)) =
-            before_each_1(conn);
-
-        diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
-                subject: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", foxford_account.id),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", foxford_account.id),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-                namespace_id: iam_namespace.id,
-            })
-            .execute(conn)
-            .unwrap();
-
-        (
-            (iam_account, iam_namespace),
-            (foxford_account, foxford_namespace),
-        )
+    fn before_each_2(conn: &PgConnection) {
+        let _ = before_each_1(conn);
     }
 
     #[test]
-    fn when_authorized_request() {
+    fn can_create_record() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -145,74 +114,30 @@ mod with_namespace_ownership {
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *EXPECTED);
 
-        let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(1));
-    }
-
-    #[test]
-    fn when_anonymous_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
-
         {
             let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
+            assert_eq!(find_record(&conn), Ok(1));
         }
-
-        let req =
-            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
-
-        let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(0));
     }
 }
 
-mod without_namespace_ownership {
-    use super::*;
-    use actix_web::HttpMessage;
+#[test]
+fn anonymous_cannot_create_record() {
+    let shared::Server { mut srv, pool } = shared::build_server();
 
-    #[test]
-    fn when_authorized_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
-
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_1(&conn);
-        }
-
-        let req = shared::build_auth_request(
-            &srv,
-            serde_json::to_string(&build_request()).unwrap(),
-            Some(*FOXFORD_ACCOUNT_ID),
-        );
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
-
+    {
         let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(0));
+        let _ = before_each_1(&conn);
     }
 
-    #[test]
-    fn when_anonymous_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
+    let req =
+        shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+    let resp = srv.execute(req.send()).unwrap();
+    let body = srv.execute(resp.body()).unwrap();
+    assert_eq!(body, *shared::api::FORBIDDEN);
 
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_1(&conn);
-        }
-
-        let req =
-            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
-
-        let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(0));
-    }
+    let conn = get_conn!(pool);
+    assert_eq!(find_record(&conn), Ok(0));
 }
 
 fn build_request() -> serde_json::Value {

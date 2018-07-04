@@ -1,3 +1,4 @@
+use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
 use jsonrpc;
 use serde_json;
@@ -10,13 +11,14 @@ use abac::types::AbacAttribute;
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
+use shared::{
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID,
+    NETOLOGY_ACCOUNT_ID, NETOLOGY_NAMESPACE_ID,
+};
 
 lazy_static! {
     static ref USER_ACCOUNT_ID_1: Uuid = Uuid::new_v4();
     static ref USER_ACCOUNT_ID_2: Uuid = Uuid::new_v4();
-    static ref NETOLOGY_ACCOUNT_ID: Uuid = Uuid::new_v4();
-    static ref NETOLOGY_NAMESPACE_ID: Uuid = Uuid::new_v4();
 }
 
 #[must_use]
@@ -32,15 +34,8 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let foxford_account = create_account(conn, AccountKind::Foxford);
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
-    let netology_account = create_account(conn, AccountKind::Other(*NETOLOGY_ACCOUNT_ID));
-    let netology_namespace = create_namespace(
-        conn,
-        NamespaceKind::Other {
-            id: *NETOLOGY_NAMESPACE_ID,
-            label: "netology.ru",
-            account_id: netology_account.id,
-        },
-    );
+    let netology_account = create_account(conn, AccountKind::Netology);
+    let netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
     create_records(conn);
 
@@ -92,270 +87,74 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     )
 }
 
-mod with_namespace_ownership {
+mod with_admin {
     use super::*;
-    use actix_web::HttpMessage;
-
-    fn before_each_2(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-        let ((iam_account, iam_namespace), (foxford_account, foxford_namespace)) =
-            before_each_1(conn);
-
-        diesel::insert_into(abac_policy::table)
-            .values(iam_policies())
-            .execute(conn)
-            .unwrap();
-
-        (
-            (iam_account, iam_namespace),
-            (foxford_account, foxford_namespace),
-        )
-    }
-
-    mod when_authorized_request {
-        use super::*;
-
-        #[test]
-        fn when_all_namespace_ids_permitted_1() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request(&[*IAM_NAMESPACE_ID, *NETOLOGY_NAMESPACE_ID]))
-                    .unwrap(),
-                Some(*IAM_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-
-            if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
-                let mut policies: Vec<AbacPolicy> = serde_json::from_value(resp.result).unwrap();
-
-                for policy in iam_policies() {
-                    let index = policies.iter().position(|p| *p == policy).unwrap();
-                    policies.remove(index);
-                }
-
-                let policy = AbacPolicy {
-                    namespace_id: *NETOLOGY_NAMESPACE_ID,
-                    subject: vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", *USER_ACCOUNT_ID_2),
-                    }],
-                    object: vec![AbacAttribute {
-                        namespace_id: *NETOLOGY_NAMESPACE_ID,
-                        key: "type".to_owned(),
-                        value: "abac_policy".to_owned(),
-                    }],
-                    action: vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "operation".to_owned(),
-                        value: "any".to_owned(),
-                    }],
-                };
-
-                let index = policies.iter().position(|p| *p == policy).unwrap();
-                policies.remove(index);
-
-                assert!(policies.is_empty());
-            } else {
-                panic!(body);
-            }
-        }
-
-        #[test]
-        fn when_all_namespace_ids_permitted_2() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request(&[*FOXFORD_NAMESPACE_ID])).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let resp_template = r#"{
-                "jsonrpc": "2.0",
-                "result": [
-                    {
-                        "action": [
-                            {
-                                "key": "operation",
-                                "namespace_id": "IAM_NAMESPACE_ID",
-                                "value": "any"
-                            }
-                        ],
-                        "namespace_id": "FOXFORD_NAMESPACE_ID",
-                        "object": [
-                            {
-                                "key": "type",
-                                "namespace_id": "FOXFORD_NAMESPACE_ID",
-                                "value": "abac_policy"
-                            }
-                        ],
-                        "subject": [
-                            {
-                                "key": "uri",
-                                "namespace_id": "IAM_NAMESPACE_ID",
-                                "value": "account/USER_ACCOUNT_ID_1"
-                            }
-                        ]
-                    },
-                    {
-                        "action": [
-                            {
-                                "key": "operation",
-                                "namespace_id": "IAM_NAMESPACE_ID",
-                                "value": "any"
-                            }
-                        ],
-                        "namespace_id": "FOXFORD_NAMESPACE_ID",
-                        "object": [
-                            {
-                                "key": "type",
-                                "namespace_id": "FOXFORD_NAMESPACE_ID",
-                                "value": "abac_policy"
-                            }
-                        ],
-                        "subject": [
-                            {
-                                "key": "uri",
-                                "namespace_id": "IAM_NAMESPACE_ID",
-                                "value": "account/USER_ACCOUNT_ID_2"
-                            }
-                        ]
-                    }
-                ],
-                "id": "qwerty"
-            }"#;
-            let resp_json = resp_template
-                .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
-                .replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string())
-                .replace("USER_ACCOUNT_ID_2", &USER_ACCOUNT_ID_2.to_string());
-            assert_eq!(body, shared::strip_json(&resp_json));
-        }
-
-        #[test]
-        fn when_all_namespace_ids_permitted_3() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request(&[*NETOLOGY_NAMESPACE_ID])).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let resp_template = r#"{
-                "jsonrpc": "2.0",
-                "result": [
-                    {
-                        "action": [
-                            {
-                                "key": "operation",
-                                "namespace_id": "IAM_NAMESPACE_ID",
-                                "value": "any"
-                            }
-                        ],
-                        "namespace_id": "NETOLOGY_NAMESPACE_ID",
-                        "object": [
-                            {
-                                "key": "type",
-                                "namespace_id": "NETOLOGY_NAMESPACE_ID",
-                                "value": "abac_policy"
-                            }
-                        ],
-                        "subject": [
-                            {
-                                "key": "uri",
-                                "namespace_id": "IAM_NAMESPACE_ID",
-                                "value": "account/USER_ACCOUNT_ID_2"
-                            }
-                        ]
-                    }
-                ],
-                "id": "qwerty"
-            }"#;
-            let resp_json = resp_template
-                .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string())
-                .replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string())
-                .replace("USER_ACCOUNT_ID_2", &USER_ACCOUNT_ID_2.to_string());
-            assert_eq!(body, shared::strip_json(&resp_json));
-        }
-
-        #[test]
-        fn when_not_all_namespace_ids_permitted() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request(&[
-                    *FOXFORD_NAMESPACE_ID,
-                    *NETOLOGY_NAMESPACE_ID,
-                ])).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-        }
-    }
 
     #[test]
-    fn when_anonymous_request() {
+    fn can_list_records_with_any_filter() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
             let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
+            let _ = before_each_1(&conn);
         }
 
-        let req = shared::build_anonymous_request(
+        let req = shared::build_auth_request(
             &srv,
-            serde_json::to_string(&build_request(&[*FOXFORD_NAMESPACE_ID])).unwrap(),
+            serde_json::to_string(&build_request(&[*IAM_NAMESPACE_ID, *NETOLOGY_NAMESPACE_ID]))
+                .unwrap(),
+            Some(*IAM_ACCOUNT_ID),
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
+            let mut policies: Vec<AbacPolicy> = serde_json::from_value(resp.result).unwrap();
+
+            for policy in iam_policies() {
+                let index = policies.iter().position(|p| *p == policy).unwrap();
+                policies.remove(index);
+            }
+
+            let policy = AbacPolicy {
+                namespace_id: *NETOLOGY_NAMESPACE_ID,
+                subject: vec![AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "uri".to_owned(),
+                    value: format!("account/{}", *USER_ACCOUNT_ID_2),
+                }],
+                object: vec![AbacAttribute {
+                    namespace_id: *NETOLOGY_NAMESPACE_ID,
+                    key: "type".to_owned(),
+                    value: "abac_policy".to_owned(),
+                }],
+                action: vec![AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                }],
+            };
+
+            let index = policies.iter().position(|p| *p == policy).unwrap();
+            policies.remove(index);
+
+            assert!(policies.is_empty());
+        } else {
+            panic!(body);
+        }
     }
 }
 
-mod without_namespace_ownership {
+mod with_client {
     use super::*;
-    use actix_web::HttpMessage;
-
-    fn before_each_2(conn: &PgConnection) -> ((Account, Namespace), (Account, Namespace)) {
-        before_each_1(conn)
-    }
 
     #[test]
-    fn when_authorized_request() {
+    fn can_list_own_records_1() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
             let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
+            let _ = before_each_1(&conn);
         }
 
         let req = shared::build_auth_request(
@@ -365,26 +164,160 @@ mod without_namespace_ownership {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "FOXFORD_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "type",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "abac_policy"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/USER_ACCOUNT_ID_1"
+                        }
+                    ]
+                },
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "FOXFORD_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "type",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "abac_policy"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/USER_ACCOUNT_ID_2"
+                        }
+                    ]
+                }
+            ],
+            "id": "qwerty"
+        }"#;
+        let resp_json = resp_template
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string())
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+            .replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string())
+            .replace("USER_ACCOUNT_ID_2", &USER_ACCOUNT_ID_2.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
     }
 
     #[test]
-    fn when_anonymous_request() {
+    fn can_list_own_records_2() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
             let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
+            let _ = before_each_1(&conn);
         }
 
-        let req = shared::build_anonymous_request(
+        let req = shared::build_auth_request(
             &srv,
-            serde_json::to_string(&build_request(&[*FOXFORD_NAMESPACE_ID])).unwrap(),
+            serde_json::to_string(&build_request(&[*NETOLOGY_NAMESPACE_ID])).unwrap(),
+            Some(*NETOLOGY_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "type",
+                            "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                            "value": "abac_policy"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/USER_ACCOUNT_ID_2"
+                        }
+                    ]
+                }
+            ],
+            "id": "qwerty"
+        }"#;
+        let resp_json = resp_template
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string())
+            .replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string())
+            .replace("USER_ACCOUNT_ID_2", &USER_ACCOUNT_ID_2.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
+    }
+
+    #[test]
+    fn cannot_list_alien_records() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request(&[
+                *FOXFORD_NAMESPACE_ID,
+                *NETOLOGY_NAMESPACE_ID,
+            ])).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
     }
+}
+
+#[test]
+fn anonymous_cannot_list_records() {
+    let shared::Server { mut srv, pool } = shared::build_server();
+
+    {
+        let conn = get_conn!(pool);
+        let _ = before_each_1(&conn);
+    }
+
+    let req = shared::build_anonymous_request(
+        &srv,
+        serde_json::to_string(&build_request(&[*FOXFORD_NAMESPACE_ID])).unwrap(),
+    );
+    let resp = srv.execute(req.send()).unwrap();
+    let body = srv.execute(resp.body()).unwrap();
+    assert_eq!(body, *shared::api::FORBIDDEN);
 }
 
 fn build_request(ids: &[Uuid]) -> serde_json::Value {

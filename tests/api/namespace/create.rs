@@ -1,23 +1,21 @@
+use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
 use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacPolicy};
-use abac::schema::{abac_object, abac_policy};
+use abac::models::AbacObject;
+use abac::schema::abac_object;
 use abac::types::AbacAttribute;
 
 use iam::models::{Account, Namespace, NewNamespace};
 use iam::schema::namespace;
 
+use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{self, FOXFORD_ACCOUNT_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
 
 #[must_use]
 fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
-    use shared::db::{
-        create_account, create_namespace, create_operations, AccountKind, NamespaceKind,
-    };
-
     conn.begin_test_transaction()
         .expect("Failed to begin transaction");
 
@@ -47,196 +45,133 @@ fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
     (iam_account, iam_namespace)
 }
 
-mod with_permission {
-    use super::*;
-    use actix_web::HttpMessage;
+#[test]
+fn admin_can_create_namespace() {
+    let shared::Server { mut srv, pool } = shared::build_server();
 
-    #[must_use]
-    fn before_each_2(conn: &PgConnection) -> (Account, Namespace) {
-        let (iam_account, iam_namespace) = before_each_1(conn);
-
-        diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
-                subject: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", iam_account.id),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", iam_account.id),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-                namespace_id: iam_namespace.id,
-            })
-            .execute(conn)
-            .unwrap();
-
-        (iam_account, iam_namespace)
+    {
+        let conn = get_conn!(pool);
+        let _ = before_each_1(&conn);
     }
 
-    #[test]
-    fn when_authorized_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
+    let req = shared::build_auth_request(
+        &srv,
+        serde_json::to_string(&build_request()).unwrap(),
+        Some(*IAM_ACCOUNT_ID),
+    );
+    let resp = srv.execute(req.send()).unwrap();
+    let body = srv.execute(resp.body()).unwrap();
+
+    if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
+        let namespace: Namespace = serde_json::from_value(resp.result).unwrap();
+
+        let expected = build_record();
+        assert_ne!(namespace.id, Uuid::nil());
+        assert_eq!(namespace.label, expected.label);
+        assert_eq!(namespace.account_id, expected.account_id);
+        assert_eq!(namespace.enabled, expected.enabled);
 
         {
             let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
+            assert_eq!(find_record(&conn), Ok(1));
         }
 
+        let req_json = json!({
+            "jsonrpc": "2.0",
+            "method": "authorize",
+            "params": [{
+                "namespace_ids": [*IAM_NAMESPACE_ID],
+                "subject": [
+                    {
+                        "namespace_id": *IAM_NAMESPACE_ID,
+                        "key": "uri",
+                        "value": format!("account/{}", *IAM_ACCOUNT_ID),
+                    }
+                ],
+                "object": [
+                    {
+                        "namespace_id": *IAM_NAMESPACE_ID,
+                        "key": "uri",
+                        "value": format!("namespace/{}", namespace.id),
+                    }
+                ],
+                "action": [
+                    {
+                        "namespace_id": *IAM_NAMESPACE_ID,
+                        "key": "operation",
+                        "value": "read",
+                    },
+                    {
+                        "namespace_id": *IAM_NAMESPACE_ID,
+                        "key": "operation",
+                        "value": "update",
+                    },
+                    {
+                        "namespace_id": *IAM_NAMESPACE_ID,
+                        "key": "operation",
+                        "value": "delete",
+                    }
+                ],
+            }],
+            "id": "qwerty",
+        });
         let req = shared::build_auth_request(
             &srv,
-            serde_json::to_string(&build_request()).unwrap(),
+            serde_json::to_string(&req_json).unwrap(),
             Some(*IAM_ACCOUNT_ID),
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-
-        if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
-            let namespace: Namespace = serde_json::from_value(resp.result).unwrap();
-
-            let expected = build_record();
-            assert_ne!(namespace.id, Uuid::nil());
-            assert_eq!(namespace.label, expected.label);
-            assert_eq!(namespace.account_id, expected.account_id);
-            assert_eq!(namespace.enabled, expected.enabled);
-
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(1));
-            }
-
-            let req_json = json!({
-                "jsonrpc": "2.0",
-                "method": "authorize",
-                "params": [{
-                    "namespace_ids": [*IAM_NAMESPACE_ID],
-                    "subject": [
-                        {
-                            "namespace_id": *IAM_NAMESPACE_ID,
-                            "key": "uri",
-                            "value": format!("account/{}", *IAM_ACCOUNT_ID),
-                        }
-                    ],
-                    "object": [
-                        {
-                            "namespace_id": *IAM_NAMESPACE_ID,
-                            "key": "uri",
-                            "value": format!("namespace/{}", namespace.id),
-                        }
-                    ],
-                    "action": [
-                        {
-                            "namespace_id": *IAM_NAMESPACE_ID,
-                            "key": "operation",
-                            "value": "read",
-                        },
-                        {
-                            "namespace_id": *IAM_NAMESPACE_ID,
-                            "key": "operation",
-                            "value": "update",
-                        },
-                        {
-                            "namespace_id": *IAM_NAMESPACE_ID,
-                            "key": "operation",
-                            "value": "delete",
-                        }
-                    ],
-                }],
-                "id": "qwerty",
-            });
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&req_json).unwrap(),
-                Some(*IAM_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let resp_json = r#"{
-                "jsonrpc": "2.0",
-                "result": true,
-                "id": "qwerty"
-            }"#;
-            assert_eq!(body, shared::strip_json(resp_json));
-        } else {
-            panic!("{:?}", body);
-        }
-    }
-
-    #[test]
-    fn when_anonymous_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
-
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
-        }
-
-        let req =
-            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
-
-        let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(0));
+        let resp_json = r#"{
+            "jsonrpc": "2.0",
+            "result": true,
+            "id": "qwerty"
+        }"#;
+        assert_eq!(body, shared::strip_json(resp_json));
+    } else {
+        panic!("{:?}", body);
     }
 }
 
-mod without_permission {
-    use super::*;
-    use actix_web::HttpMessage;
+#[test]
+fn client_cannot_create_namespace() {
+    let shared::Server { mut srv, pool } = shared::build_server();
 
-    #[must_use]
-    fn before_each_2(conn: &PgConnection) -> (Account, Namespace) {
-        before_each_1(conn)
-    }
-
-    #[test]
-    fn when_authorized_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
-
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
-        }
-
-        let req = shared::build_auth_request(
-            &srv,
-            serde_json::to_string(&build_request()).unwrap(),
-            Some(*IAM_ACCOUNT_ID),
-        );
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
-
+    {
         let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(0));
+        let _ = before_each_1(&conn);
     }
 
-    #[test]
-    fn when_anonymous_request() {
-        let shared::Server { mut srv, pool } = shared::build_server();
+    let req = shared::build_auth_request(
+        &srv,
+        serde_json::to_string(&build_request()).unwrap(),
+        Some(*FOXFORD_ACCOUNT_ID),
+    );
+    let resp = srv.execute(req.send()).unwrap();
+    let body = srv.execute(resp.body()).unwrap();
+    assert_eq!(body, *shared::api::FORBIDDEN);
 
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
-        }
+    let conn = get_conn!(pool);
+    assert_eq!(find_record(&conn), Ok(0));
+}
 
-        let req =
-            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
+#[test]
+fn anonymous_cannot_create_namespace() {
+    let shared::Server { mut srv, pool } = shared::build_server();
 
+    {
         let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn), Ok(0));
+        let _ = before_each_1(&conn);
     }
+
+    let req =
+        shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+    let resp = srv.execute(req.send()).unwrap();
+    let body = srv.execute(resp.body()).unwrap();
+    assert_eq!(body, *shared::api::FORBIDDEN);
+
+    let conn = get_conn!(pool);
+    assert_eq!(find_record(&conn), Ok(0));
 }
 
 fn build_request() -> serde_json::Value {

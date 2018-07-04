@@ -12,6 +12,8 @@ lazy_static! {
         Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap();
     pub static ref FOXFORD_ACCOUNT_ID: Uuid = Uuid::new_v4();
     pub static ref FOXFORD_NAMESPACE_ID: Uuid = Uuid::new_v4();
+    pub static ref NETOLOGY_ACCOUNT_ID: Uuid = Uuid::new_v4();
+    pub static ref NETOLOGY_NAMESPACE_ID: Uuid = Uuid::new_v4();
 }
 
 #[macro_export]
