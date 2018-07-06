@@ -3,7 +3,7 @@ use actix::prelude::*;
 use diesel::{self, prelude::*};
 
 use actors::DbExecutor;
-use models::{identity::PrimaryKey, Identity, NewIdentity};
+use models::{identity::PrimaryKey, Identity, NewAccount, NewIdentity};
 
 #[derive(Debug)]
 pub enum Insert {
@@ -45,7 +45,7 @@ fn insert_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryRes
     use actors::db::account;
 
     conn.transaction::<_, _, _>(|| {
-        let account = account::insert::insert(conn, account::insert::Insert { enabled: true })?;
+        let account = account::insert::insert_account(conn, NewAccount { enabled: true })?;
 
         let changeset = NewIdentity {
             provider: pk.provider,

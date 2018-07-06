@@ -1,7 +1,4 @@
-use abac::{
-    models::{AbacObject, AbacPolicy, AbacSubject},
-    schema::{abac_object, abac_policy, abac_subject}, types::AbacAttribute,
-};
+use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
@@ -34,6 +31,7 @@ pub enum NamespaceKind<'a> {
 
 pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
     use self::AccountKind::*;
+    use iam::actors::db;
     use iam::schema::account;
 
     let id = match kind {
@@ -48,51 +46,12 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
         .get_result::<Account>(conn)
         .unwrap();
 
-    diesel::insert_into(abac_policy::table)
-        .values(AbacPolicy {
-            subject: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", account.id),
-            }],
-            object: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", account.id),
-            }],
-            action: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "operation".to_owned(),
-                value: "any".to_owned(),
-            }],
-            namespace_id: *IAM_NAMESPACE_ID,
-        })
-        .execute(conn)
-        .unwrap();
+    db::account::insert::insert_account_policies(conn, account.id).unwrap();
 
     match kind {
         Iam => {}
-        Foxford | Netology => {
-            diesel::insert_into(abac_subject::table)
-                .values(AbacSubject {
-                    inbound: AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", account.id),
-                    },
-                    outbound: AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "role".to_owned(),
-                        value: "client".to_owned(),
-                    },
-                })
-                .execute(conn)
-                .unwrap();
-
-            link_account_to_iam(conn, account.id);
-        }
-        Other(_) => {
-            link_account_to_iam(conn, account.id);
+        _ => {
+            db::account::insert::insert_account_links(conn, account.id).unwrap();
         }
     }
 
@@ -159,87 +118,24 @@ pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
     use abac::schema::abac_action;
     use abac::types::AbacAttribute;
 
-    diesel::insert_into(abac_action::table)
-        .values(vec![
-            AbacAction {
-                inbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "create".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                },
-            },
-            AbacAction {
-                inbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "read".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                },
-            },
-            AbacAction {
-                inbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "update".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                },
-            },
-            AbacAction {
-                inbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "delete".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                },
-            },
-            AbacAction {
-                inbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "list".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                },
-            },
-        ])
-        .execute(conn)
-        .unwrap();
-}
-
-fn link_account_to_iam(conn: &PgConnection, account_id: Uuid) {
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
+    let operations = ["create", "read", "update", "delete", "list"]
+        .iter()
+        .map(|operation| AbacAction {
             inbound: AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", account_id),
+                namespace_id,
+                key: "operation".to_owned(),
+                value: operation.to_string(),
             },
             outbound: AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", *IAM_NAMESPACE_ID),
+                namespace_id,
+                key: "operation".to_owned(),
+                value: "any".to_owned(),
             },
         })
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(abac_action::table)
+        .values(operations)
         .execute(conn)
         .unwrap();
 }
