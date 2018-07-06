@@ -36,13 +36,12 @@ fn delete_identity(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity>
 }
 
 fn delete_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
-    use schema::account;
+    use actors::db::account;
 
     conn.transaction::<_, _, _>(|| {
         let identity = delete_identity(conn, pk)?;
 
-        let target = account::table.find(identity.account_id);
-        diesel::delete(target).execute(conn)?;
+        account::delete::delete(conn, identity.account_id)?;
 
         Ok(identity)
     })

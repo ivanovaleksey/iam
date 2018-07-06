@@ -4,12 +4,16 @@ use diesel::prelude::*;
 use serde_json;
 use uuid::Uuid;
 
+use abac::schema::{abac_object, abac_policy};
+use abac::types::AbacAttribute;
+
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
 use iam::schema::{account, identity};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{
-    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID, NETOLOGY_NAMESPACE_ID,
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID,
+    NETOLOGY_NAMESPACE_ID,
 };
 
 lazy_static! {
@@ -99,6 +103,24 @@ mod with_existing_record {
 
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(0));
+
+                let found = abac_object::table
+                    .filter(abac_object::inbound.eq(AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
+                    }))
+                    .execute(&conn);
+                assert_eq!(found, Ok(0));
+
+                let found = abac_policy::table
+                    .filter(abac_policy::subject.eq(vec![AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
+                    }]))
+                    .execute(&conn);
+                assert_eq!(found, Ok(0));
             }
         }
 
@@ -184,6 +206,24 @@ mod with_existing_record {
                 assert_eq!(find_record(&conn), Ok(0));
 
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
+                assert_eq!(found, Ok(0));
+
+                let found = abac_object::table
+                    .filter(abac_object::inbound.eq(AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
+                    }))
+                    .execute(&conn);
+                assert_eq!(found, Ok(0));
+
+                let found = abac_policy::table
+                    .filter(abac_policy::subject.eq(vec![AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
+                    }]))
+                    .execute(&conn);
                 assert_eq!(found, Ok(0));
             }
         }
