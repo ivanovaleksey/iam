@@ -12,12 +12,14 @@ use iam::models::{Account, Identity, Namespace};
 use iam::schema::identity;
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
+use shared::{
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID,
+    NETOLOGY_NAMESPACE_ID,
+};
 
 lazy_static! {
     static ref FOXFORD_USER_1_ID: Uuid = Uuid::new_v4();
     static ref FOXFORD_USER_2_ID: Uuid = Uuid::new_v4();
-    static ref NETOLOGY_NAMESPACE_ID: Uuid = Uuid::new_v4();
     static ref NETOLOGY_USER_ID: Uuid = Uuid::new_v4();
     static ref USER_ACCOUNT_ID_1: Uuid = Uuid::new_v4();
     static ref USER_ACCOUNT_ID_2: Uuid = Uuid::new_v4();
@@ -36,15 +38,8 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let foxford_account = create_account(conn, AccountKind::Foxford);
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
-    let netology_account = create_account(conn, AccountKind::Other(Uuid::new_v4()));
-    let _netology_namespace = create_namespace(
-        conn,
-        NamespaceKind::Other {
-            id: *NETOLOGY_NAMESPACE_ID,
-            label: "netology.ru",
-            account_id: netology_account.id,
-        },
-    );
+    let netology_account = create_account(conn, AccountKind::Netology);
+    let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
     create_records(conn);
 

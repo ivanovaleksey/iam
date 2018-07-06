@@ -37,11 +37,18 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                             key: "uri".to_owned(),
                             value: format!("account/{}", subject_id),
                         }],
-                        object: vec![AbacAttribute {
-                            namespace_id: id,
-                            key: "type".to_owned(),
-                            value: "abac_object".to_owned(),
-                        }],
+                        object: vec![
+                            AbacAttribute {
+                                namespace_id: iam_namespace_id,
+                                key: "uri".to_owned(),
+                                value: format!("namespace/{}", id),
+                            },
+                            AbacAttribute {
+                                namespace_id: iam_namespace_id,
+                                key: "type".to_owned(),
+                                value: "abac_object".to_owned(),
+                            },
+                        ],
                         action: vec![AbacAttribute {
                             namespace_id: iam_namespace_id,
                             key: "operation".to_owned(),
