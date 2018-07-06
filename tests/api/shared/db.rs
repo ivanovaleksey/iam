@@ -157,18 +157,32 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
 
     if let Iam(_) = kind {
         diesel::insert_into(abac_object::table)
-            .values(AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: namespace.id,
-                    key: "type".to_owned(),
-                    value: "abac_object".to_owned(),
+            .values(vec![
+                AbacObject {
+                    inbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "type".to_owned(),
+                        value: "identity".to_owned(),
+                    },
+                    outbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "uri".to_owned(),
+                        value: format!("namespace/{}", namespace.id),
+                    },
                 },
-                outbound: AbacAttribute {
-                    namespace_id: namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", namespace.id),
+                AbacObject {
+                    inbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "type".to_owned(),
+                        value: "abac_object".to_owned(),
+                    },
+                    outbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "uri".to_owned(),
+                        value: format!("namespace/{}", namespace.id),
+                    },
                 },
-            })
+            ])
             .execute(conn)
             .unwrap();
     }

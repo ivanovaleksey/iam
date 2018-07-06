@@ -6,10 +6,6 @@ use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacObject;
-use abac::schema::abac_object;
-use abac::types::AbacAttribute;
-
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
 use iam::schema::{account, identity};
 
@@ -38,22 +34,6 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
 
     let netology_account = create_account(conn, AccountKind::Netology);
     let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
-
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: foxford_namespace.id,
-                key: "type".to_owned(),
-                value: "identity".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", foxford_namespace.id),
-            },
-        })
-        .execute(conn)
-        .unwrap();
 
     (
         (iam_account, iam_namespace),
