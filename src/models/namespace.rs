@@ -1,8 +1,8 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use actors::db;
 use models::Account;
+use rpc::namespace::create;
 use schema::namespace;
 
 #[derive(AsChangeset, Associations, Identifiable, Queryable, Debug, Deserialize)]
@@ -24,8 +24,8 @@ pub struct NewNamespace {
     pub enabled: bool,
 }
 
-impl From<db::namespace::insert::Insert> for NewNamespace {
-    fn from(msg: db::namespace::insert::Insert) -> Self {
+impl From<create::Request> for NewNamespace {
+    fn from(msg: create::Request) -> Self {
         NewNamespace {
             label: msg.label,
             account_id: msg.account_id,

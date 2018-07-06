@@ -30,13 +30,15 @@ impl Handler<Insert> for DbExecutor {
 fn insert_identity(conn: &PgConnection, changeset: NewIdentity) -> QueryResult<Identity> {
     use schema::identity;
 
-    let identity = diesel::insert_into(identity::table)
-        .values(changeset)
-        .get_result(conn)?;
+    conn.transaction::<_, _, _>(|| {
+        let identity = diesel::insert_into(identity::table)
+            .values(changeset)
+            .get_result(conn)?;
 
-    insert_identity_links(conn, &identity)?;
+        insert_identity_links(conn, &identity)?;
 
-    Ok(identity)
+        Ok(identity)
+    })
 }
 
 fn insert_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {

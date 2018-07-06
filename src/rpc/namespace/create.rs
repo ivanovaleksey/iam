@@ -5,7 +5,7 @@ use jsonrpc;
 use uuid::Uuid;
 
 use actors::db::{authz::Authz, namespace};
-use models::Namespace;
+use models::{Namespace, NewNamespace};
 use rpc;
 use settings;
 
@@ -72,12 +72,14 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.unwrap();
             move |_| {
-                let msg = namespace::insert::Insert::from(req);
+                let changeset = NewNamespace::from(req);
+                let msg = namespace::insert::Insert(changeset);
                 db.send(msg)
                     .map_err(|_| jsonrpc::Error::internal_error())
                     .and_then(|res| {
                         debug!("namespace insert res: {:?}", res);
-                        Ok(Response::from(res?))
+                        let namespace = res.map_err(rpc::error::Error::Db)?;
+                        Ok(Response::from(namespace))
                     })
             }
         })

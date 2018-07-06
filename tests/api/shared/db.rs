@@ -101,6 +101,7 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
 
 pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     use self::NamespaceKind::*;
+    use iam::actors::db;
     use iam::schema::namespace;
 
     let (id, label, account_id) = match kind {
@@ -125,64 +126,27 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
         .get_result::<Namespace>(conn)
         .unwrap();
 
-    diesel::insert_into(abac_object::table)
-        .values(vec![
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", namespace.id),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "type".to_owned(),
-                    value: "namespace".to_owned(),
-                },
-            },
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", namespace.id),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", namespace.account_id),
-                },
-            },
-        ])
-        .execute(conn)
-        .unwrap();
+    db::namespace::insert::insert_namespace_links(conn, &namespace).unwrap();
 
     if let Iam(_) = kind {
+        let objects = ["identity", "abac_subject", "abac_object", "abac_action"]
+            .iter()
+            .map(|collection| AbacObject {
+                inbound: AbacAttribute {
+                    namespace_id: namespace.id,
+                    key: "type".to_owned(),
+                    value: collection.to_string(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: namespace.id,
+                    key: "uri".to_owned(),
+                    value: format!("namespace/{}", namespace.id),
+                },
+            })
+            .collect::<Vec<_>>();
+
         diesel::insert_into(abac_object::table)
-            .values(vec![
-                AbacObject {
-                    inbound: AbacAttribute {
-                        namespace_id: namespace.id,
-                        key: "type".to_owned(),
-                        value: "identity".to_owned(),
-                    },
-                    outbound: AbacAttribute {
-                        namespace_id: namespace.id,
-                        key: "uri".to_owned(),
-                        value: format!("namespace/{}", namespace.id),
-                    },
-                },
-                AbacObject {
-                    inbound: AbacAttribute {
-                        namespace_id: namespace.id,
-                        key: "type".to_owned(),
-                        value: "abac_object".to_owned(),
-                    },
-                    outbound: AbacAttribute {
-                        namespace_id: namespace.id,
-                        key: "uri".to_owned(),
-                        value: format!("namespace/{}", namespace.id),
-                    },
-                },
-            ])
+            .values(objects)
             .execute(conn)
             .unwrap();
     }

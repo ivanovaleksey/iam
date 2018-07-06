@@ -6,6 +6,10 @@ use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
+use abac::models::AbacPolicy;
+use abac::schema::abac_policy;
+use abac::types::AbacAttribute;
+
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
 use iam::schema::{account, identity};
 
@@ -45,7 +49,7 @@ mod with_client {
     use super::*;
 
     #[test]
-    fn can_create_identity_first_time() {
+    fn can_create_record_first_time() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -192,7 +196,7 @@ mod with_client {
     }
 
     #[test]
-    fn cannot_create_identity_second_time() {
+    fn cannot_create_record_second_time() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -235,7 +239,7 @@ mod with_client {
     }
 
     #[test]
-    fn cannot_create_alien_provider_identity() {
+    fn cannot_create_alien_record() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -257,10 +261,66 @@ mod with_client {
             assert_eq!(find_record(&conn), Ok(0));
         }
     }
+
+    #[test]
+    fn can_create_alien_record_when_permission_granted() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+
+            diesel::insert_into(abac_policy::table)
+                .values(AbacPolicy {
+                    subject: vec![AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", *NETOLOGY_ACCOUNT_ID),
+                    }],
+                    object: vec![
+                        AbacAttribute {
+                            namespace_id: *IAM_NAMESPACE_ID,
+                            key: "uri".to_owned(),
+                            value: format!("namespace/{}", *FOXFORD_NAMESPACE_ID),
+                        },
+                        AbacAttribute {
+                            namespace_id: *IAM_NAMESPACE_ID,
+                            key: "type".to_owned(),
+                            value: "identity".to_owned(),
+                        },
+                    ],
+                    action: vec![AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "operation".to_owned(),
+                        value: "create".to_owned(),
+                    }],
+                    namespace_id: *IAM_NAMESPACE_ID,
+                })
+                .execute(&conn)
+                .unwrap();
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*NETOLOGY_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+
+        if let Ok(_) = serde_json::from_slice::<jsonrpc::Success>(&body) {
+            {
+                let conn = get_conn!(pool);
+                assert_eq!(find_record(&conn), Ok(1));
+            }
+        } else {
+            panic!("{:?}", body);
+        }
+    }
 }
 
 #[test]
-fn anonymous_cannot_create_identity() {
+fn anonymous_cannot_create_record() {
     let shared::Server { mut srv, pool } = shared::build_server();
 
     {
