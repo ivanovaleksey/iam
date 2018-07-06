@@ -1,5 +1,6 @@
 use abac::{
-    models::{AbacObject, AbacPolicy}, schema::{abac_object, abac_policy}, types::AbacAttribute,
+    models::{AbacObject, AbacPolicy, AbacSubject},
+    schema::{abac_object, abac_policy, abac_subject}, types::AbacAttribute,
 };
 use chrono::NaiveDate;
 use diesel;
@@ -71,9 +72,9 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
 
     match kind {
         Iam => {}
-        _ => {
-            diesel::insert_into(abac_object::table)
-                .values(AbacObject {
+        Foxford | Netology => {
+            diesel::insert_into(abac_subject::table)
+                .values(AbacSubject {
                     inbound: AbacAttribute {
                         namespace_id: *IAM_NAMESPACE_ID,
                         key: "uri".to_owned(),
@@ -81,12 +82,17 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
                     },
                     outbound: AbacAttribute {
                         namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("namespace/{}", *IAM_NAMESPACE_ID),
+                        key: "role".to_owned(),
+                        value: "client".to_owned(),
                     },
                 })
                 .execute(conn)
                 .unwrap();
+
+            link_account_to_iam(conn, account.id);
+        }
+        Other(_) => {
+            link_account_to_iam(conn, account.id);
         }
     }
 
@@ -148,6 +154,38 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
         ])
         .execute(conn)
         .unwrap();
+
+    if let Iam(_) = kind {
+        diesel::insert_into(abac_object::table)
+            .values(vec![
+                AbacObject {
+                    inbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "type".to_owned(),
+                        value: "identity".to_owned(),
+                    },
+                    outbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "uri".to_owned(),
+                        value: format!("namespace/{}", namespace.id),
+                    },
+                },
+                AbacObject {
+                    inbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "type".to_owned(),
+                        value: "abac_object".to_owned(),
+                    },
+                    outbound: AbacAttribute {
+                        namespace_id: namespace.id,
+                        key: "uri".to_owned(),
+                        value: format!("namespace/{}", namespace.id),
+                    },
+                },
+            ])
+            .execute(conn)
+            .unwrap();
+    }
 
     namespace
 }
@@ -220,6 +258,24 @@ pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
                 },
             },
         ])
+        .execute(conn)
+        .unwrap();
+}
+
+fn link_account_to_iam(conn: &PgConnection, account_id: Uuid) {
+    diesel::insert_into(abac_object::table)
+        .values(AbacObject {
+            inbound: AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "uri".to_owned(),
+                value: format!("account/{}", account_id),
+            },
+            outbound: AbacAttribute {
+                namespace_id: *IAM_NAMESPACE_ID,
+                key: "uri".to_owned(),
+                value: format!("namespace/{}", *IAM_NAMESPACE_ID),
+            },
+        })
         .execute(conn)
         .unwrap();
 }

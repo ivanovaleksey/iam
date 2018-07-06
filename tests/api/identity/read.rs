@@ -4,17 +4,11 @@ use diesel::prelude::*;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacObject;
-use abac::schema::abac_object;
-use abac::types::AbacAttribute;
-
 use iam::models::{Account, Identity, Namespace};
 use iam::schema::identity;
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{
-    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID,
-};
+use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID};
 
 lazy_static! {
     static ref FOXFORD_USER_ID: Uuid = Uuid::new_v4();
@@ -59,22 +53,6 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
     let _user_account_2 = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_2));
-
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: foxford_namespace.id,
-                key: "type".to_owned(),
-                value: "identity".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", foxford_namespace.id),
-            },
-        })
-        .execute(conn)
-        .unwrap();
 
     (
         (iam_account, iam_namespace),
@@ -271,7 +249,7 @@ fn build_request() -> serde_json::Value {
 }
 
 fn create_user_identity(conn: &PgConnection) -> Identity {
-    use iam::models::identity::PrimaryKey;
+    use iam::actors::db;
 
     let account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
 
@@ -286,49 +264,7 @@ fn create_user_identity(conn: &PgConnection) -> Identity {
         .get_result::<Identity>(conn)
         .unwrap();
 
-    let pk = PrimaryKey::from(identity.clone());
-
-    diesel::insert_into(abac_object::table)
-        .values(vec![
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: *FOXFORD_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("identity/{}", pk),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "type".to_owned(),
-                    value: "identity".to_owned(),
-                },
-            },
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: *FOXFORD_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("identity/{}", pk),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", account.id),
-                },
-            },
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: *FOXFORD_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("identity/{}", pk),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", *FOXFORD_NAMESPACE_ID),
-                },
-            },
-        ])
-        .execute(conn)
-        .unwrap();
+    db::identity::insert::insert_identity_links(conn, &identity).unwrap();
 
     identity
 }

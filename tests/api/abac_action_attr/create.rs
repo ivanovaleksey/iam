@@ -113,7 +113,7 @@ mod with_client {
             let ((_iam_account, iam_namespace), (_foxford_account, foxford_namespace)) =
                 before_each_1(&conn);
 
-            let netology_account = create_account(&conn, AccountKind::Other(*NETOLOGY_ACCOUNT_ID));
+            let netology_account = create_account(&conn, AccountKind::Netology);
 
             diesel::insert_into(abac_policy::table)
                 .values(AbacPolicy {

@@ -3,15 +3,16 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacObject;
-use abac::schema::abac_object;
+use abac::models::{AbacObject, AbacPolicy};
+use abac::schema::{abac_object, abac_policy};
 use abac::types::AbacAttribute;
 
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{
-    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID, NETOLOGY_NAMESPACE_ID,
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID,
+    NETOLOGY_NAMESPACE_ID,
 };
 
 #[must_use]
@@ -28,39 +29,9 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
     let netology_account = create_account(conn, AccountKind::Netology);
-    let netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
+    let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
     create_records(conn);
-
-    diesel::insert_into(abac_object::table)
-        .values(vec![
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: foxford_namespace.id,
-                    key: "type".to_owned(),
-                    value: "abac_object".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", foxford_namespace.id),
-                },
-            },
-            AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: netology_namespace.id,
-                    key: "type".to_owned(),
-                    value: "abac_object".to_owned(),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace.id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", netology_namespace.id),
-                },
-            },
-        ])
-        .execute(conn)
-        .unwrap();
 
     (
         (iam_account, iam_namespace),
@@ -181,6 +152,74 @@ mod with_client {
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
+    }
+
+    #[test]
+    fn can_list_alien_records_when_permission_granted() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+
+            diesel::insert_into(abac_policy::table)
+                .values(AbacPolicy {
+                    subject: vec![AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "uri".to_owned(),
+                        value: format!("account/{}", *FOXFORD_ACCOUNT_ID),
+                    }],
+                    object: vec![
+                        AbacAttribute {
+                            namespace_id: *IAM_NAMESPACE_ID,
+                            key: "uri".to_owned(),
+                            value: format!("namespace/{}", *NETOLOGY_NAMESPACE_ID),
+                        },
+                        AbacAttribute {
+                            namespace_id: *IAM_NAMESPACE_ID,
+                            key: "type".to_owned(),
+                            value: "abac_object".to_owned(),
+                        },
+                    ],
+                    action: vec![AbacAttribute {
+                        namespace_id: *IAM_NAMESPACE_ID,
+                        key: "operation".to_owned(),
+                        value: "list".to_owned(),
+                    }],
+                    namespace_id: *IAM_NAMESPACE_ID,
+                })
+                .execute(&conn)
+                .unwrap();
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request(vec![*NETOLOGY_NAMESPACE_ID])).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "inbound": {
+                        "key": "uri",
+                        "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                        "value": "webinar/1"
+                    },
+                    "outbound": {
+                        "key": "type",
+                        "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                        "value": "webinar"
+                    }
+                }
+            ],
+            "id": "qwerty"
+        }"#;
+        let resp_json =
+            resp_template.replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
     }
 }
 

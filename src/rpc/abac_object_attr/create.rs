@@ -32,7 +32,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.outbound.namespace_id;
+            let namespace_id = req.inbound.namespace_id;
             move |subject_id| {
                 let iam_namespace_id = settings::iam_namespace_id();
 
@@ -43,11 +43,18 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         key: "uri".to_owned(),
                         value: format!("account/{}", subject_id),
                     }],
-                    object: vec![AbacAttribute {
-                        namespace_id,
-                        key: "type".to_owned(),
-                        value: "abac_object".to_owned(),
-                    }],
+                    object: vec![
+                        AbacAttribute {
+                            namespace_id: iam_namespace_id,
+                            key: "uri".to_owned(),
+                            value: format!("namespace/{}", namespace_id),
+                        },
+                        AbacAttribute {
+                            namespace_id: iam_namespace_id,
+                            key: "type".to_owned(),
+                            value: "abac_object".to_owned(),
+                        },
+                    ],
                     action: vec![AbacAttribute {
                         namespace_id: iam_namespace_id,
                         key: "operation".to_owned(),
