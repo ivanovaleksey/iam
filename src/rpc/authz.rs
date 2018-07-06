@@ -46,8 +46,7 @@ impl Rpc for RpcImpl {
         msg.namespace_ids.push(iam_namespace_id);
         msg.namespace_ids.dedup();
 
-        let fut = meta
-            .db
+        let fut = meta.db
             .unwrap()
             .send(msg)
             .map_err(|_| jsonrpc::Error::internal_error())

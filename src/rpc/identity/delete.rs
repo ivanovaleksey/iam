@@ -63,8 +63,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         }],
                     };
 
-                    let f = db
-                        .send(msg)
+                    let f = db.send(msg)
                         .map_err(|_| jsonrpc::Error::internal_error())
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| Ok(identity));
@@ -90,8 +89,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         }],
                     };
 
-                    let f = db
-                        .send(msg)
+                    let f = db.send(msg)
                         .map_err(|_| jsonrpc::Error::internal_error())
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| {
@@ -126,8 +124,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                             // Remove both identity and account.
 
                             let msg = identity::delete::Delete::IdentityWithAccount(pk);
-                            let f = db
-                                .send(msg)
+                            let f = db.send(msg)
                                 .map_err(|_| jsonrpc::Error::internal_error())
                                 .and_then(|res| {
                                     debug!("identity delete with account res: {:?}", res);
@@ -139,8 +136,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                             Either::A(f)
                         } else {
                             let msg = identity::delete::Delete::Identity(pk);
-                            let f = db
-                                .send(msg)
+                            let f = db.send(msg)
                                 .map_err(|_| jsonrpc::Error::internal_error())
                                 .and_then(|res| {
                                     debug!("identity delete res: {:?}", res);

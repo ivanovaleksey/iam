@@ -60,8 +60,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         }],
                     };
 
-                    let f = db
-                        .send(msg)
+                    let f = db.send(msg)
                         .map_err(|_| jsonrpc::Error::internal_error())
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| Ok(namespace));
@@ -87,8 +86,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         }],
                     };
 
-                    let f = db
-                        .send(msg)
+                    let f = db.send(msg)
                         .map_err(|_| jsonrpc::Error::internal_error())
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| {

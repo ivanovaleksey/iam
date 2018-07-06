@@ -33,8 +33,7 @@ fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> Result<Vec<Identity
     use schema::identity;
 
     // TODO: remove it once Diesel support (provider, label, uid) IN ((), (), ()) syntax
-    let values = ids
-        .iter()
+    let values = ids.iter()
         .map(|pk| format!("('{}','{}','{}')", pk.provider, pk.label, pk.uid))
         .collect::<Vec<_>>()
         .join(",");
