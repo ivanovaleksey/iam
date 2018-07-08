@@ -30,7 +30,7 @@ extern crate uuid;
 extern crate pretty_assertions;
 
 use actix::prelude::*;
-use actix_web::{App, AsyncResponder, FutureResponse, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{http, App, HttpMessage, HttpRequest, HttpResponse};
 use diesel::{r2d2, PgConnection};
 use futures::future::{self, Either, Future};
 
@@ -56,7 +56,7 @@ pub fn build_app(database_url: String) -> App<AppState> {
     let pool = r2d2::Pool::new(manager).unwrap();
     App::with_state(build_app_state(pool))
         .middleware(actix_web::middleware::Logger::default())
-        .resource("/", |r| r.post().h(call))
+        .resource("/", |r| r.method(http::Method::POST).with_async(index))
 }
 
 pub fn build_app_state(pool: DbPool) -> AppState {
@@ -76,7 +76,9 @@ struct JwtPayload {
     sub: uuid::Uuid,
 }
 
-pub fn call(req: HttpRequest<AppState>) -> FutureResponse<HttpResponse> {
+pub fn index(
+    req: HttpRequest<AppState>,
+) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
     let mut meta = req.state().rpc_meta.clone();
 
     req.clone()
@@ -154,7 +156,6 @@ pub fn call(req: HttpRequest<AppState>) -> FutureResponse<HttpResponse> {
                 Ok(HttpResponse::Ok().into())
             }
         })
-        .responder()
 }
 
 fn internal_error(_e: ()) -> actix_web::Error {

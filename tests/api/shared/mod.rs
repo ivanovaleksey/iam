@@ -44,7 +44,7 @@ pub fn build_server() -> Server {
     let pool1 = pool.clone();
     let srv =
         TestServer::build_with_state(move || iam::build_app_state(pool1.clone())).start(|app| {
-            app.resource("/", |r| r.post().h(iam::call));
+            app.resource("/", |r| r.method(http::Method::POST).with_async(iam::index));
         });
 
     Server { srv, pool }
