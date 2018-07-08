@@ -98,11 +98,11 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
 
             // Identity is not found. Create new account & linked identity.
             move |_| {
-                let msg = identity::insert::Insert::IdentityWithAccount(req.id);
-
+                let msg = identity::insert::InsertWithAccount(req.id);
                 db.send(msg).from_err().and_then(|res| {
                     debug!("identity insert res: {:?}", res);
-                    Ok(Response::from(res?))
+                    let (identity, _, _) = res?;
+                    Ok(Response::from(identity))
                 })
             }
         })

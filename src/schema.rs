@@ -32,7 +32,7 @@ table! {
         account_id -> Uuid,
         algorithm -> Text,
         keys -> Array<Bytea>,
-        issued_at -> Timestamptz,
+        created_at -> Timestamptz,
     }
 }
 

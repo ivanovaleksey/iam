@@ -1,7 +1,7 @@
 use abac::types::AbacAttribute;
 use chrono::{DateTime, Utc};
 use diesel;
-use futures::future::{self, Future};
+use futures::future::{self, Either, Future};
 use uuid::Uuid;
 
 use actors::db::{account, authz::Authz};
@@ -56,7 +56,6 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.unwrap();
             move |(account, subject_id)| {
                 use abac_attribute::{CollectionKind, OperationKind, UriKind};
-                use future::Either;
 
                 let iam_namespace_id = settings::iam_namespace_id();
 

@@ -1,6 +1,8 @@
 use actix_web::{self, http, test::TestServer};
 use diesel;
 use iam;
+use serde::ser::Serialize;
+use serde_json;
 use uuid::Uuid;
 
 pub mod api;
@@ -44,7 +46,23 @@ pub fn build_server() -> Server {
     let pool1 = pool.clone();
     let srv =
         TestServer::build_with_state(move || iam::build_app_state(pool1.clone())).start(|app| {
-            app.resource("/", |r| r.method(http::Method::POST).with_async(iam::index));
+            app.resource("/", |r| {
+                r.method(http::Method::POST).with_async(iam::rpc::index)
+            }).resource("/auth/{auth_key}/token", |r| {
+                use actix_web::{pred, HttpResponse};
+
+                r.route()
+                    .filter(pred::Not(
+                        pred::Any(pred::Header(
+                            "Content-Type",
+                            "application/x-www-form-urlencoded",
+                        )).or(pred::Header("Content-Type", "application/json")),
+                    ))
+                    .f(|_| HttpResponse::NotAcceptable());
+
+                r.method(http::Method::POST)
+                    .with_async(iam::authn::retrieve::call)
+            });
         });
 
     Server { srv, pool }
@@ -72,25 +90,28 @@ fn build_rpc_request(
     builder.content_type("application/json");
 
     if let Some(account_id) = account_id {
-        use iam::settings::SETTINGS;
-        use jwt;
-
-        let header = json!({});
-        let payload = json!({
-            "sub": account_id,
-        });
-        let settings = SETTINGS.read().unwrap();
-        let token = jwt::encode(
-            header,
-            &settings.private_key,
-            &payload,
-            jwt::Algorithm::ES256,
-        ).unwrap();
-        let auth_header = format!("Bearer {}", token);
+        let auth_header = format!("Bearer {}", generate_access_token(account_id));
         builder.header(http::header::AUTHORIZATION, auth_header);
     }
 
     builder.body(json).unwrap()
+}
+
+pub fn generate_access_token(sub: Uuid) -> String {
+    let token = iam::authn::jwt::AccessToken::new("foxford.ru".to_owned(), 300, sub);
+    sign_access_token(token)
+}
+
+pub fn sign_access_token<T: Serialize>(token: T) -> String {
+    use frank_jwt;
+
+    let settings = get_settings!();
+    frank_jwt::encode(
+        json!({}),
+        &settings.tokens.key,
+        &serde_json::to_value(token).unwrap(),
+        frank_jwt::Algorithm::ES256,
+    ).unwrap()
 }
 
 fn init() {

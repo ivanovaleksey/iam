@@ -3,13 +3,10 @@ use actix::prelude::*;
 use diesel::{self, prelude::*};
 
 use actors::DbExecutor;
-use models::{identity::PrimaryKey, Identity, NewIdentity};
+use models::{identity::PrimaryKey, Account, Identity, NewIdentity, NewRefreshToken, RefreshToken};
 
 #[derive(Debug)]
-pub enum Insert {
-    Identity(NewIdentity),
-    IdentityWithAccount(PrimaryKey),
-}
+pub struct Insert(pub NewIdentity);
 
 impl Message for Insert {
     type Result = QueryResult<Identity>;
@@ -20,14 +17,27 @@ impl Handler<Insert> for DbExecutor {
 
     fn handle(&mut self, msg: Insert, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        match msg {
-            Insert::Identity(changeset) => insert_identity(conn, changeset),
-            Insert::IdentityWithAccount(pk) => insert_identity_with_account(conn, pk),
-        }
+        insert_identity(conn, &msg.0)
     }
 }
 
-fn insert_identity(conn: &PgConnection, changeset: NewIdentity) -> QueryResult<Identity> {
+#[derive(Debug)]
+pub struct InsertWithAccount(pub PrimaryKey);
+
+impl Message for InsertWithAccount {
+    type Result = QueryResult<(Identity, Account, RefreshToken)>;
+}
+
+impl Handler<InsertWithAccount> for DbExecutor {
+    type Result = QueryResult<(Identity, Account, RefreshToken)>;
+
+    fn handle(&mut self, msg: InsertWithAccount, _ctx: &mut Self::Context) -> Self::Result {
+        let conn = &self.0.get().unwrap();
+        insert_identity_with_account(conn, msg.0)
+    }
+}
+
+fn insert_identity(conn: &PgConnection, changeset: &NewIdentity) -> QueryResult<Identity> {
     use schema::identity;
 
     conn.transaction::<_, _, _>(|| {
@@ -41,11 +51,29 @@ fn insert_identity(conn: &PgConnection, changeset: NewIdentity) -> QueryResult<I
     })
 }
 
-fn insert_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
+pub fn insert_identity_with_account(
+    conn: &PgConnection,
+    pk: PrimaryKey,
+) -> QueryResult<(Identity, Account, RefreshToken)> {
     use actors::db::account;
+    use ring::rand::SecureRandom;
+    use schema::refresh_token;
+    use SYSTEM_RANDOM;
 
     conn.transaction::<_, _, _>(|| {
         let account = account::insert::insert_account(conn)?;
+
+        let mut buf = vec![0; 64];
+        // TODO: do not unwrap
+        SYSTEM_RANDOM.fill(&mut buf).unwrap();
+
+        let token = diesel::insert_into(refresh_token::table)
+            .values(NewRefreshToken {
+                account_id: account.id,
+                algorithm: "HS256".to_owned(),
+                keys: vec![buf],
+            })
+            .get_result::<RefreshToken>(conn)?;
 
         let changeset = NewIdentity {
             provider: pk.provider,
@@ -53,9 +81,9 @@ fn insert_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryRes
             uid: pk.uid,
             account_id: account.id,
         };
-        let identity = insert_identity(conn, changeset)?;
+        let identity = insert_identity(conn, &changeset)?;
 
-        Ok(identity)
+        Ok((identity, account, token))
     })
 }
 

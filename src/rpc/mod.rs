@@ -1,6 +1,8 @@
 use actix::{Addr, Syn};
+use actix_web::{self, HttpMessage, HttpRequest, HttpResponse};
 use diesel::QueryResult;
-use jsonrpc::{MetaIoHandler, Metadata};
+use futures::future::{self, Either, Future};
+use jsonrpc::{self, MetaIoHandler, Metadata};
 use serde::de::{self, Deserialize, Deserializer};
 use serde_json;
 use uuid::{self, Uuid};
@@ -8,6 +10,7 @@ use uuid::{self, Uuid};
 use std::{fmt, str};
 
 use actors::DbExecutor;
+use authn;
 use rpc::abac_action_attr::Rpc as AbacActionRpc;
 use rpc::abac_object_attr::Rpc as AbacObjectRpc;
 use rpc::abac_policy::Rpc as AbacPolicyRpc;
@@ -18,6 +21,7 @@ pub use rpc::error::Error;
 use rpc::identity::Rpc as IdentityRpc;
 use rpc::namespace::Rpc as NamespaceRpc;
 use rpc::ping::Rpc as PingRpc;
+use AppState;
 
 pub mod abac_action_attr;
 pub mod abac_object_attr;
@@ -172,4 +176,120 @@ pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), Error> {
 
 pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, Error> {
     subject.ok_or_else(|| Error::Forbidden)
+}
+
+pub fn index(
+    req: HttpRequest<AppState>,
+) -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
+    let mut meta = req.state().rpc_meta.clone();
+
+    req.clone()
+        .json()
+        .from_err()
+        .and_then(move |request: jsonrpc::Request| {
+            let auth_header = req.headers().get("Authorization").map(|v| v.to_str());
+
+            let res = match auth_header {
+                Some(Ok(header)) => {
+                    let mut kv = header.splitn(2, ' ');
+                    match (kv.next(), kv.next()) {
+                        (Some("Bearer"), Some(v)) => {
+                            let raw_token = authn::jwt::RawToken {
+                                kind: authn::jwt::RawTokenKind::Iam,
+                                value: v,
+                            };
+                            match authn::jwt::AccessToken::decode(&raw_token) {
+                                Ok(token) => {
+                                    meta.subject = Some(token.sub);
+                                    Ok(())
+                                }
+                                Err(e) => {
+                                    error!("{:?}", e);
+                                    Err(())
+                                }
+                            }
+                        }
+                        _ => {
+                            error!("Bad auth header");
+                            Err(())
+                        }
+                    }
+                }
+                Some(Err(_)) => {
+                    error!("Cannot parse auth header");
+                    Err(())
+                }
+                None => {
+                    debug!("Missing auth header");
+                    Ok(())
+                }
+            };
+
+            use internal_error;
+            if res.is_ok() {
+                Either::A(
+                    req.state()
+                        .rpc_server
+                        .handle_rpc_request(request, meta)
+                        .map_err(internal_error),
+                )
+            } else {
+                Either::B(reject_request(&request).map_err(internal_error))
+            }
+        })
+        .then(|res| {
+            res.or_else(|_| {
+                let e = jsonrpc::Error::new(jsonrpc::ErrorCode::ParseError);
+                let resp = jsonrpc::Response::from(e, Some(jsonrpc::Version::V2));
+                Ok(Some(resp))
+            })
+        })
+        .and_then(|resp| {
+            if let Some(resp) = resp {
+                let resp_str = serde_json::to_string(&resp).unwrap();
+                Ok(HttpResponse::Ok().body(resp_str))
+            } else {
+                Ok(HttpResponse::Ok().into())
+            }
+        })
+}
+
+fn reject_request(
+    request: &jsonrpc::Request,
+) -> impl Future<Item = Option<jsonrpc::Response>, Error = ()> {
+    match request {
+        jsonrpc::Request::Single(call) => {
+            let output = reject_call(call);
+            let res = output.map(|o| o.map(jsonrpc::Response::Single));
+            Either::A(res)
+        }
+        jsonrpc::Request::Batch(calls) => {
+            let futures: Vec<_> = calls.iter().map(|c| reject_call(c)).collect();
+            let res = future::join_all(futures).map(|outs| {
+                let outs: Vec<_> = outs.into_iter().filter_map(|v| v).collect();
+                Some(jsonrpc::Response::Batch(outs))
+            });
+            Either::B(res)
+        }
+    }
+}
+
+fn reject_call(call: &jsonrpc::Call) -> impl Future<Item = Option<jsonrpc::Output>, Error = ()> {
+    let err = jsonrpc::Error {
+        code: jsonrpc::ErrorCode::ServerError(401),
+        message: "Unauthorized".to_owned(),
+        data: None,
+    };
+
+    let output = match call {
+        jsonrpc::Call::MethodCall(method) => {
+            jsonrpc::Output::from(Err(err), method.id.clone(), method.jsonrpc)
+        }
+        jsonrpc::Call::Notification(notification) => {
+            jsonrpc::Output::from(Err(err), jsonrpc::Id::Null, notification.jsonrpc)
+        }
+        jsonrpc::Call::Invalid(_id) => jsonrpc::Output::from(Err(err), jsonrpc::Id::Null, None),
+    };
+
+    future::ok(Some(output))
 }

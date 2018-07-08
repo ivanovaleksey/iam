@@ -1,6 +1,6 @@
 use abac::types::AbacAttribute;
 use diesel;
-use futures::future::{self, Future};
+use futures::future::{self, Either, Future};
 use uuid::Uuid;
 
 use actors::db::{authz::Authz, namespace};
@@ -46,7 +46,6 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             move |(namespace, subject_id)| {
                 use abac_attribute::{CollectionKind, OperationKind, UriKind};
-                use future::Either;
 
                 let iam_namespace_id = settings::iam_namespace_id();
 

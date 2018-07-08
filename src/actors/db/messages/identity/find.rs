@@ -41,7 +41,7 @@ fn find_identity(conn: &PgConnection, pk: &PrimaryKey) -> QueryResult<Identity> 
     identity::table.find(pk.as_tuple()).get_result(conn)
 }
 
-fn find_identity_with_account(
+pub fn find_identity_with_account(
     conn: &PgConnection,
     pk: &PrimaryKey,
 ) -> QueryResult<(Identity, Account)> {

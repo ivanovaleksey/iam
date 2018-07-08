@@ -9,8 +9,16 @@ use schema::refresh_token;
 #[primary_key(account_id)]
 #[table_name = "refresh_token"]
 pub struct RefreshToken {
-    account_id: Uuid,
-    algorithm: String,
-    keys: Vec<u8>,
-    issued_at: DateTime<Utc>,
+    pub account_id: Uuid,
+    pub algorithm: String,
+    pub keys: Vec<Vec<u8>>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "refresh_token"]
+pub struct NewRefreshToken {
+    pub account_id: Uuid,
+    pub algorithm: String,
+    pub keys: Vec<Vec<u8>>,
 }
