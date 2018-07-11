@@ -187,54 +187,42 @@ pub fn index(
         .json()
         .from_err()
         .and_then(move |request: jsonrpc::Request| {
-            let auth_header = req.headers().get("Authorization").map(|v| v.to_str());
+            use extract_authorization_header;
 
-            let res = match auth_header {
-                Some(Ok(header)) => {
-                    let mut kv = header.splitn(2, ' ');
-                    match (kv.next(), kv.next()) {
-                        (Some("Bearer"), Some(v)) => {
-                            let raw_token = authn::jwt::RawToken {
-                                kind: authn::jwt::RawTokenKind::Iam,
-                                value: v,
-                            };
-                            match authn::jwt::AccessToken::decode(&raw_token) {
-                                Ok(token) => {
-                                    meta.subject = Some(token.sub);
-                                    Ok(())
-                                }
-                                Err(e) => {
-                                    error!("{:?}", e);
-                                    Err(())
-                                }
-                            }
+            let headers = req.headers();
+            let res = match extract_authorization_header(&headers) {
+                Ok(Some(value)) => {
+                    let raw_token = authn::jwt::RawToken {
+                        kind: authn::jwt::RawTokenKind::Iam,
+                        value,
+                    };
+                    match authn::jwt::AccessToken::decode(&raw_token) {
+                        Ok(token) => {
+                            meta.subject = Some(token.sub);
+                            Ok(())
                         }
-                        _ => {
-                            error!("Bad auth header");
+                        Err(e) => {
+                            error!("{:?}", e);
                             Err(())
                         }
                     }
                 }
-                Some(Err(_)) => {
-                    error!("Cannot parse auth header");
-                    Err(())
-                }
-                None => {
-                    debug!("Missing auth header");
-                    Ok(())
-                }
+                Ok(None) => Ok(()),
+                Err(_) => Err(()),
             };
 
-            use internal_error;
             if res.is_ok() {
                 Either::A(
                     req.state()
                         .rpc_server
                         .handle_rpc_request(request, meta)
-                        .map_err(internal_error),
+                        .map_err(|_| actix_web::error::ErrorInternalServerError("")),
                 )
             } else {
-                Either::B(reject_request(&request).map_err(internal_error))
+                Either::B(
+                    reject_request(&request)
+                        .map_err(|_| actix_web::error::ErrorInternalServerError("")),
+                )
             }
         })
         .then(|res| {

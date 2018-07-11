@@ -22,6 +22,7 @@ Name          | Type   | Default    | Description
 ------------- | ------ | ---------- | ------------------
 grant\_type   | string | _required_ | Always `client_credentials`
 client\_token | string | _required_ | Client credentials
+expires\_in   | int    |        300 | Desired expiration time
 
 **Response**
 
@@ -29,7 +30,7 @@ Name           | Type   | Default    | Description
 -------------- | ------ | ---------- | ------------------
 access\_token  | string | _required_ | Used for account identification
 refresh\_token | string | _required_ | Used to refresh the access token, never expires
-expires\_in    | string | _required_ | Expiration time of access token
+expires\_in    | int    | _required_ | Expiration time of access token
 token\_type    | string | _required_ | Always `Bearer`
 
 **Example**

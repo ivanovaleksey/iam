@@ -87,6 +87,11 @@ impl AccessToken {
             frank_jwt::Algorithm::ES256,
         ).map_err(|_| EncodeError)
     }
+
+    pub fn default_expires_in() -> u16 {
+        let settings = get_settings!();
+        settings.tokens.expires_in
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

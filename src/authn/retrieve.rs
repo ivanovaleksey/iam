@@ -9,15 +9,8 @@ use AppState;
 struct Payload {
     pub grant_type: String,
     pub client_token: String,
-    #[serde(default = "Payload::default_expires_in")]
+    #[serde(default = "jwt::AccessToken::default_expires_in")]
     pub expires_in: u16,
-}
-
-impl Payload {
-    fn default_expires_in() -> u16 {
-        let settings = get_settings!();
-        settings.tokens.expires_in
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,6 +19,18 @@ pub struct Response<'a> {
     pub refresh_token: &'a str,
     pub expires_in: u16,
     pub token_type: &'a str,
+}
+
+impl<'a> Response<'a> {
+    pub fn new(access_token: &'a str, refresh_token: &'a str, expires_in: u16) -> Self {
+        use TOKEN_TYPE;
+        Response {
+            token_type: TOKEN_TYPE,
+            access_token,
+            refresh_token,
+            expires_in,
+        }
+    }
 }
 
 pub fn call(
@@ -132,12 +137,7 @@ pub fn call(
                 .ok_or_else(|| authn::Error::InternalError)?;
             let refresh_token = jwt::RefreshToken::encode(&payload, key)?;
 
-            Ok(HttpResponse::Ok().json(Response {
-                access_token: &access_token,
-                refresh_token: &refresh_token,
-                token_type: "Bearer",
-                expires_in,
-            }))
+            Ok(HttpResponse::Ok().json(Response::new(&access_token, &refresh_token, expires_in)))
         })
 }
 

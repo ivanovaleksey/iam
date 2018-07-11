@@ -21,8 +21,17 @@ pub enum Error {
     #[fail(display = "Internal error")]
     InternalError,
 
+    #[fail(display = "Bad request")]
+    BadRequest,
+
+    #[fail(display = "Unauthorized")]
+    Unauthorized,
+
     #[fail(display = "Forbidden")]
     Forbidden,
+
+    #[fail(display = "Not found")]
+    NotFound,
 }
 
 impl From<actix::MailboxError> for Error {
@@ -59,7 +68,10 @@ impl From<Error> for actix_web::Error {
             }
             InvalidClient => bad_request("invalid_client"),
             InvalidRequest => bad_request("invalid_request"),
+            BadRequest => actix_web::error::ErrorBadRequest(""),
+            Unauthorized => actix_web::error::ErrorUnauthorized(""),
             Forbidden => actix_web::error::ErrorForbidden(""),
+            NotFound => actix_web::error::ErrorNotFound(""),
         }
     }
 }

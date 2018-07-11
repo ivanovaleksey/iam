@@ -16,12 +16,18 @@ Name      | Type   | Default    | Description
 --------- | ------ | ---------- | ------------------
 KEY       | string | _required_ | Account identifier or `me`
 
+**Payload**
+
+Name          | Type   | Default    | Description
+------------- | ------ | ---------- | ------------------
+expires\_in   | int    |        300 | Desired expiration time
+
 **Response**
 
 Name           | Type   | Default    | Description
 -------------- | ------ | ---------- | ------------------
 access\_token  | string | _required_ | Used for account identification.
-expires\_in    | string | _required_ | Expiration time of access token
+expires\_in    | int    | _required_ | Expiration time of access token
 token\_type    | string | _required_ | Always `Bearer`
 
 **Example**

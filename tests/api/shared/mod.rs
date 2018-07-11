@@ -49,20 +49,24 @@ pub fn build_server() -> Server {
             app.resource("/", |r| {
                 r.method(http::Method::POST).with_async(iam::rpc::index)
             }).resource("/auth/{auth_key}/token", |r| {
-                use actix_web::{pred, HttpResponse};
+                    use actix_web::{pred, HttpResponse};
 
-                r.route()
-                    .filter(pred::Not(
-                        pred::Any(pred::Header(
-                            "Content-Type",
-                            "application/x-www-form-urlencoded",
-                        )).or(pred::Header("Content-Type", "application/json")),
-                    ))
-                    .f(|_| HttpResponse::NotAcceptable());
+                    r.route()
+                        .filter(pred::Not(
+                            pred::Any(pred::Header(
+                                "Content-Type",
+                                "application/x-www-form-urlencoded",
+                            )).or(pred::Header("Content-Type", "application/json")),
+                        ))
+                        .f(|_| HttpResponse::NotAcceptable());
 
-                r.method(http::Method::POST)
-                    .with_async(iam::authn::retrieve::call)
-            });
+                    r.method(http::Method::POST)
+                        .with_async(iam::authn::retrieve::call)
+                })
+                .resource("/accounts/{key}/refresh", |r| {
+                    r.method(http::Method::POST)
+                        .with_async(iam::authn::refresh::call)
+                });
         });
 
     Server { srv, pool }
@@ -100,6 +104,12 @@ fn build_rpc_request(
 pub fn generate_access_token(sub: Uuid) -> String {
     let token = iam::authn::jwt::AccessToken::new("foxford.ru".to_owned(), 300, sub);
     sign_access_token(token)
+}
+
+pub fn generate_refresh_token(refresh_token: &iam::models::RefreshToken) -> String {
+    let token =
+        iam::authn::jwt::RefreshToken::new("foxford.ru".to_owned(), refresh_token.account_id);
+    iam::authn::jwt::RefreshToken::encode(&token, &refresh_token.keys[0]).unwrap()
 }
 
 pub fn sign_access_token<T: Serialize>(token: T) -> String {

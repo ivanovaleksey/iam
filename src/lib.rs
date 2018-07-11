@@ -53,6 +53,8 @@ lazy_static! {
     static ref SYSTEM_RANDOM: ring::rand::SystemRandom = ring::rand::SystemRandom::new();
 }
 
+const TOKEN_TYPE: &str = "Bearer";
+
 pub type DbPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
 #[derive(Debug)]
@@ -82,6 +84,10 @@ pub fn build_app(database_url: String) -> App<AppState> {
             r.method(http::Method::POST)
                 .with_async(authn::retrieve::call)
         })
+        .resource("/accounts/{key}/refresh", |r| {
+            r.method(http::Method::POST)
+                .with_async(authn::refresh::call)
+        })
 }
 
 pub fn build_app_state(pool: DbPool) -> AppState {
@@ -96,6 +102,28 @@ pub fn build_app_state(pool: DbPool) -> AppState {
     }
 }
 
-pub fn internal_error(_e: ()) -> actix_web::Error {
-    actix_web::error::ErrorInternalServerError("")
+pub fn extract_authorization_header(
+    headers: &actix_web::http::HeaderMap,
+) -> Result<Option<&str>, ()> {
+    let auth_header = headers.get("Authorization").map(|v| v.to_str());
+    match auth_header {
+        Some(Ok(header)) => {
+            let mut kv = header.splitn(2, ' ');
+            match (kv.next(), kv.next()) {
+                (Some(TOKEN_TYPE), Some(v)) => Ok(Some(v)),
+                _ => {
+                    error!("Bad auth header: {}", header);
+                    Err(())
+                }
+            }
+        }
+        Some(Err(_)) => {
+            error!("Cannot parse auth header");
+            Err(())
+        }
+        None => {
+            debug!("Missing auth header");
+            Ok(None)
+        }
+    }
 }
