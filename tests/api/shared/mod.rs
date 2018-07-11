@@ -66,6 +66,10 @@ pub fn build_server() -> Server {
                 .resource("/accounts/{key}/refresh", |r| {
                     r.method(http::Method::POST)
                         .with_async(iam::authn::refresh::call)
+                })
+                .resource("/accounts/{key}/revoke", |r| {
+                    r.method(http::Method::POST)
+                        .with_async(iam::authn::revoke::call)
                 });
         });
 

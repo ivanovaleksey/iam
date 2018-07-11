@@ -88,6 +88,9 @@ pub fn build_app(database_url: String) -> App<AppState> {
             r.method(http::Method::POST)
                 .with_async(authn::refresh::call)
         })
+        .resource("/accounts/{key}/revoke", |r| {
+            r.method(http::Method::POST).with_async(authn::revoke::call)
+        })
 }
 
 pub fn build_app_state(pool: DbPool) -> AppState {

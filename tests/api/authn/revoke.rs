@@ -1,6 +1,5 @@
 use actix_web::{client::ClientRequest, http, test::TestServer, HttpMessage};
 use diesel::{self, prelude::*};
-use serde::ser::Serialize;
 use serde_json;
 use uuid::Uuid;
 
@@ -52,7 +51,7 @@ fn without_authorization() {
     let req = {
         use actix_web::http::Method;
 
-        let url = format!("/accounts/{}/refresh", refresh_token.account_id.to_string());
+        let url = format!("/accounts/{}/revoke", refresh_token.account_id.to_string());
         let mut builder = srv.client(Method::POST, &url);
 
         builder.content_type("application/json").finish().unwrap()
@@ -60,97 +59,6 @@ fn without_authorization() {
 
     let resp = srv.execute(req.send()).unwrap();
     assert_eq!(resp.status(), 403);
-}
-
-#[test]
-fn with_empty_body() {
-    let shared::Server { mut srv, pool } = shared::build_server();
-
-    let refresh_token = {
-        let conn = get_conn!(pool);
-        before_each_1(&conn)
-    };
-
-    let token = shared::generate_refresh_token(&refresh_token);
-    let req = {
-        use actix_web::http::Method;
-
-        let url = format!("/accounts/{}/refresh", refresh_token.account_id);
-        let mut builder = srv.client(Method::POST, &url);
-
-        builder
-            .content_type("application/json")
-            .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-            .finish()
-            .unwrap()
-    };
-
-    let resp = srv.execute(req.send()).unwrap();
-    assert_eq!(resp.status(), 200);
-
-    let body = srv.execute(resp.body()).unwrap();
-    if let Ok(resp) = serde_json::from_slice::<authn::refresh::Response>(&body) {
-        let raw_token = authn::jwt::RawToken {
-            kind: authn::jwt::RawTokenKind::Iam,
-            value: &resp.access_token,
-        };
-        let access_token = authn::jwt::AccessToken::decode(&raw_token).unwrap();
-
-        assert_eq!(access_token.sub, refresh_token.account_id);
-        assert_eq!(resp.expires_in, 300);
-    } else {
-        panic!("{:?}", body);
-    }
-}
-
-#[test]
-fn with_empty_payload() {
-    let shared::Server { mut srv, pool } = shared::build_server();
-
-    let refresh_token = {
-        let conn = get_conn!(pool);
-        before_each_1(&conn)
-    };
-
-    let token = shared::generate_refresh_token(&refresh_token);
-    let payload = json!({});
-    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token, payload);
-
-    let resp = srv.execute(req.send()).unwrap();
-    assert_eq!(resp.status(), 200);
-
-    let body = srv.execute(resp.body()).unwrap();
-    if let Ok(resp) = serde_json::from_slice::<authn::refresh::Response>(&body) {
-        let raw_token = authn::jwt::RawToken {
-            kind: authn::jwt::RawTokenKind::Iam,
-            value: &resp.access_token,
-        };
-        let access_token = authn::jwt::AccessToken::decode(&raw_token).unwrap();
-
-        assert_eq!(access_token.sub, refresh_token.account_id);
-        assert_eq!(resp.expires_in, 300);
-    } else {
-        panic!("{:?}", body);
-    }
-}
-
-#[test]
-fn with_invalid_expires_in() {
-    let shared::Server { mut srv, pool } = shared::build_server();
-
-    let refresh_token = {
-        let conn = get_conn!(pool);
-        before_each_1(&conn)
-    };
-
-    let token = shared::generate_refresh_token(&refresh_token);
-    let payload = json!({
-        "expires_in": 14401
-    });
-    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token, payload);
-
-    let resp = srv.execute(req.send()).unwrap();
-    assert_eq!(resp.status(), 400);
 }
 
 #[test]
@@ -165,11 +73,45 @@ fn with_invalid_signature() {
     let mut token = shared::generate_refresh_token(&refresh_token);
     token.push_str("qwerty");
 
-    let payload = json!({});
-    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token, payload);
+    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token);
 
     let resp = srv.execute(req.send()).unwrap();
     assert_eq!(resp.status(), 401);
+}
+
+#[test]
+fn with_enabled_account() {
+    let shared::Server { mut srv, pool } = shared::build_server();
+
+    let old_refresh_token = {
+        let conn = get_conn!(pool);
+        before_each_1(&conn)
+    };
+
+    let token = shared::generate_refresh_token(&old_refresh_token);
+    let req = build_request(&srv, &old_refresh_token.account_id.to_string(), &token);
+
+    let resp = srv.execute(req.send()).unwrap();
+    assert_eq!(resp.status(), 200);
+
+    let body = srv.execute(resp.body()).unwrap();
+    if let Ok(resp) = serde_json::from_slice::<authn::revoke::Response>(&body) {
+        let old_key = &old_refresh_token.keys[0];
+        assert!(authn::jwt::RefreshToken::decode(&resp.refresh_token, old_key).is_err());
+
+        let new_refresh_token = {
+            let conn = get_conn!(pool);
+            refresh_token::table
+                .find(old_refresh_token.account_id)
+                .get_result::<RefreshToken>(&conn)
+                .unwrap()
+        };
+        let new_key = &new_refresh_token.keys[0];
+        let refresh_token = authn::jwt::RefreshToken::decode(&resp.refresh_token, new_key).unwrap();
+        assert_eq!(refresh_token.sub, old_refresh_token.account_id);
+    } else {
+        panic!("{:?}", body);
+    }
 }
 
 #[test]
@@ -189,8 +131,7 @@ fn with_disabled_account() {
     };
 
     let token = shared::generate_refresh_token(&refresh_token);
-    let payload = json!({});
-    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token, payload);
+    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token);
 
     let resp = srv.execute(req.send()).unwrap();
     assert_eq!(resp.status(), 403);
@@ -206,8 +147,7 @@ fn without_existing_account() {
     }
 
     let account_id = Uuid::new_v4();
-    let payload = json!({});
-    let req = build_request(&srv, &account_id.to_string(), "qwerty", payload);
+    let req = build_request(&srv, &account_id.to_string(), "qwerty");
 
     let resp = srv.execute(req.send()).unwrap();
     assert_eq!(resp.status(), 404);
@@ -220,27 +160,33 @@ mod with_me {
     fn with_valid_signature() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
-        let refresh_token = {
+        let old_refresh_token = {
             let conn = get_conn!(pool);
             before_each_1(&conn)
         };
 
-        let token = shared::generate_refresh_token(&refresh_token);
-        let payload = json!({});
-        let req = build_request(&srv, "me", &token, payload);
+        let token = shared::generate_refresh_token(&old_refresh_token);
+        let req = build_request(&srv, "me", &token);
 
         let resp = srv.execute(req.send()).unwrap();
         assert_eq!(resp.status(), 200);
 
         let body = srv.execute(resp.body()).unwrap();
-        if let Ok(resp) = serde_json::from_slice::<authn::refresh::Response>(&body) {
-            let raw_token = authn::jwt::RawToken {
-                kind: authn::jwt::RawTokenKind::Iam,
-                value: &resp.access_token,
-            };
-            let access_token = authn::jwt::AccessToken::decode(&raw_token).unwrap();
+        if let Ok(resp) = serde_json::from_slice::<authn::revoke::Response>(&body) {
+            let old_key = &old_refresh_token.keys[0];
+            assert!(authn::jwt::RefreshToken::decode(&resp.refresh_token, old_key).is_err());
 
-            assert_eq!(access_token.sub, refresh_token.account_id);
+            let new_refresh_token = {
+                let conn = get_conn!(pool);
+                refresh_token::table
+                    .find(old_refresh_token.account_id)
+                    .get_result::<RefreshToken>(&conn)
+                    .unwrap()
+            };
+            let new_key = &new_refresh_token.keys[0];
+            let refresh_token =
+                authn::jwt::RefreshToken::decode(&resp.refresh_token, new_key).unwrap();
+            assert_eq!(refresh_token.sub, old_refresh_token.account_id);
         } else {
             panic!("{:?}", body);
         }
@@ -258,8 +204,7 @@ mod with_me {
         let mut token = shared::generate_refresh_token(&refresh_token);
         token.push_str("qwerty");
 
-        let payload = json!({});
-        let req = build_request(&srv, "me", &token, payload);
+        let req = build_request(&srv, "me", &token);
 
         let resp = srv.execute(req.send()).unwrap();
         assert_eq!(resp.status(), 401);
@@ -283,27 +228,21 @@ fn when_token_without_key() {
     };
 
     let token = shared::generate_refresh_token(&refresh_token);
-    let payload = json!({});
-    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token, payload);
+    let req = build_request(&srv, &refresh_token.account_id.to_string(), &token);
 
     let resp = srv.execute(req.send()).unwrap();
     assert_eq!(resp.status(), 500);
 }
 
-fn build_request<T: Serialize>(
-    srv: &TestServer,
-    key: &str,
-    token: &str,
-    payload: T,
-) -> ClientRequest {
+fn build_request(srv: &TestServer, key: &str, token: &str) -> ClientRequest {
     use actix_web::http::Method;
 
-    let url = format!("/accounts/{}/refresh", key);
+    let url = format!("/accounts/{}/revoke", key);
     let mut builder = srv.client(Method::POST, &url);
 
     builder
         .content_type("application/json")
         .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-        .json(payload)
+        .finish()
         .unwrap()
 }

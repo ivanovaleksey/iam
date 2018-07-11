@@ -55,25 +55,14 @@ pub fn insert_identity_with_account(
     conn: &PgConnection,
     pk: PrimaryKey,
 ) -> QueryResult<(Identity, Account, RefreshToken)> {
-    use actors::db::account;
-    use ring::rand::SecureRandom;
-    use schema::refresh_token;
-    use SYSTEM_RANDOM;
+    use actors::db;
 
     conn.transaction::<_, _, _>(|| {
-        let account = account::insert::insert_account(conn)?;
+        let account = db::account::insert::insert_account(conn)?;
 
-        let mut buf = vec![0; 64];
         // TODO: do not unwrap
-        SYSTEM_RANDOM.fill(&mut buf).unwrap();
-
-        let token = diesel::insert_into(refresh_token::table)
-            .values(NewRefreshToken {
-                account_id: account.id,
-                algorithm: "HS256".to_owned(),
-                keys: vec![buf],
-            })
-            .get_result::<RefreshToken>(conn)?;
+        let changeset = NewRefreshToken::try_new(account.id).unwrap();
+        let token = db::refresh_token::insert::insert_token(conn, changeset)?;
 
         let changeset = NewIdentity {
             provider: pk.provider,

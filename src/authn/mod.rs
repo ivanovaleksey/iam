@@ -6,3 +6,4 @@ mod error;
 pub mod jwt;
 pub mod refresh;
 pub mod retrieve;
+pub mod revoke;
