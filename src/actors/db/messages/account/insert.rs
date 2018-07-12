@@ -5,6 +5,7 @@ use actix::prelude::*;
 use diesel::{self, prelude::*};
 use uuid::Uuid;
 
+use abac_attribute::{CollectionKind, OperationKind, UriKind};
 use actors::DbExecutor;
 use models::{Account, NewAccount};
 use settings;
@@ -43,31 +44,19 @@ pub fn insert_account(conn: &PgConnection, changeset: NewAccount) -> QueryResult
 pub fn insert_account_links(conn: &PgConnection, account_id: Uuid) -> QueryResult<usize> {
     let iam_namespace_id = settings::iam_namespace_id();
 
+    let account_uri = UriKind::Account(account_id);
     diesel::insert_into(abac_object::table)
         .values(vec![
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", account_id),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "type".to_owned(),
-                    value: "account".to_owned(),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, account_uri.clone()),
+                outbound: AbacAttribute::new(iam_namespace_id, CollectionKind::Account),
             },
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", account_id),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", iam_namespace_id),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, account_uri),
+                outbound: AbacAttribute::new(
+                    iam_namespace_id,
+                    UriKind::Namespace(iam_namespace_id),
+                ),
             },
         ])
         .execute(conn)
@@ -76,23 +65,12 @@ pub fn insert_account_links(conn: &PgConnection, account_id: Uuid) -> QueryResul
 pub fn insert_account_policies(conn: &PgConnection, account_id: Uuid) -> QueryResult<usize> {
     let iam_namespace_id = settings::iam_namespace_id();
 
+    let account_uri = UriKind::Account(account_id);
     diesel::insert_into(abac_policy::table)
         .values(AbacPolicy {
-            subject: vec![AbacAttribute {
-                namespace_id: iam_namespace_id,
-                key: "uri".to_owned(),
-                value: format!("account/{}", account_id),
-            }],
-            object: vec![AbacAttribute {
-                namespace_id: iam_namespace_id,
-                key: "uri".to_owned(),
-                value: format!("account/{}", account_id),
-            }],
-            action: vec![AbacAttribute {
-                namespace_id: iam_namespace_id,
-                key: "operation".to_owned(),
-                value: "any".to_owned(),
-            }],
+            subject: vec![AbacAttribute::new(iam_namespace_id, account_uri.clone())],
+            object: vec![AbacAttribute::new(iam_namespace_id, account_uri)],
+            action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Any)],
             namespace_id: iam_namespace_id,
         })
         .execute(conn)

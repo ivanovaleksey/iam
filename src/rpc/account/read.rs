@@ -51,6 +51,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.unwrap();
             move |(account, subject_id)| {
+                use abac_attribute::{CollectionKind, OperationKind, UriKind};
                 use future::Either;
 
                 let iam_namespace_id = settings::iam_namespace_id();
@@ -58,21 +59,15 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 if let Some(account) = account {
                     let msg = Authz {
                         namespace_ids: vec![iam_namespace_id],
-                        subject: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("account/{}", subject_id),
-                        }],
-                        object: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("account/{}", account.id),
-                        }],
-                        action: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "operation".to_owned(),
-                            value: "read".to_owned(),
-                        }],
+                        subject: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            UriKind::Account(subject_id),
+                        )],
+                        object: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            UriKind::Account(account.id),
+                        )],
+                        action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Read)],
                     };
 
                     let f = db.send(msg)
@@ -84,21 +79,15 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 } else {
                     let msg = Authz {
                         namespace_ids: vec![iam_namespace_id],
-                        subject: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("account/{}", subject_id),
-                        }],
-                        object: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "type".to_owned(),
-                            value: "account".to_owned(),
-                        }],
-                        action: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "operation".to_owned(),
-                            value: "read".to_owned(),
-                        }],
+                        subject: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            UriKind::Account(subject_id),
+                        )],
+                        object: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            CollectionKind::Account,
+                        )],
+                        action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Read)],
                     };
 
                     let f = db.send(msg)

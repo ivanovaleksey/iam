@@ -16,25 +16,18 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             let namespace_id = req.outbound.namespace_id;
             move |subject_id| {
+                use abac_attribute::{CollectionKind, OperationKind, UriKind};
+
                 let iam_namespace_id = settings::iam_namespace_id();
 
                 let msg = Authz {
                     namespace_ids: vec![iam_namespace_id],
-                    subject: vec![AbacAttribute {
-                        namespace_id: iam_namespace_id,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", subject_id),
-                    }],
-                    object: vec![AbacAttribute {
-                        namespace_id,
-                        key: "type".to_owned(),
-                        value: "abac_action".to_owned(),
-                    }],
-                    action: vec![AbacAttribute {
-                        namespace_id: iam_namespace_id,
-                        key: "operation".to_owned(),
-                        value: "read".to_owned(),
-                    }],
+                    subject: vec![AbacAttribute::new(
+                        iam_namespace_id,
+                        UriKind::Account(subject_id),
+                    )],
+                    object: vec![AbacAttribute::new(namespace_id, CollectionKind::AbacAction)],
+                    action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Read)],
                 };
 
                 db.send(msg)

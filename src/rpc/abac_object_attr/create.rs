@@ -34,32 +34,21 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             let namespace_id = req.inbound.namespace_id;
             move |subject_id| {
+                use abac_attribute::{CollectionKind, OperationKind, UriKind};
+
                 let iam_namespace_id = settings::iam_namespace_id();
 
                 let msg = Authz {
                     namespace_ids: vec![iam_namespace_id],
-                    subject: vec![AbacAttribute {
-                        namespace_id: iam_namespace_id,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", subject_id),
-                    }],
+                    subject: vec![AbacAttribute::new(
+                        iam_namespace_id,
+                        UriKind::Account(subject_id),
+                    )],
                     object: vec![
-                        AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("namespace/{}", namespace_id),
-                        },
-                        AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "type".to_owned(),
-                            value: "abac_object".to_owned(),
-                        },
+                        AbacAttribute::new(iam_namespace_id, UriKind::Namespace(namespace_id)),
+                        AbacAttribute::new(iam_namespace_id, CollectionKind::AbacObject),
                     ],
-                    action: vec![AbacAttribute {
-                        namespace_id: iam_namespace_id,
-                        key: "operation".to_owned(),
-                        value: "create".to_owned(),
-                    }],
+                    action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Create)],
                 };
 
                 db.send(msg)

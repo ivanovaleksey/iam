@@ -37,6 +37,7 @@ use futures::future::{self, Either, Future};
 use actors::DbExecutor;
 use rpc::{Meta, Server};
 
+pub mod abac_attribute;
 pub mod actors;
 pub mod models;
 pub mod rpc;

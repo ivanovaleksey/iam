@@ -60,6 +60,7 @@ fn insert_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryRes
 }
 
 pub fn insert_identity_links(conn: &PgConnection, identity: &Identity) -> QueryResult<usize> {
+    use abac_attribute::{CollectionKind, UriKind};
     use settings;
 
     let pk = PrimaryKey {
@@ -69,43 +70,26 @@ pub fn insert_identity_links(conn: &PgConnection, identity: &Identity) -> QueryR
     };
     let iam_namespace_id = settings::iam_namespace_id();
 
+    let identity_uri = UriKind::Identity(pk);
     diesel::insert_into(abac_object::table)
         .values(vec![
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("identity/{}", pk),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "type".to_owned(),
-                    value: "identity".to_owned(),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, identity_uri.clone()),
+                outbound: AbacAttribute::new(iam_namespace_id, CollectionKind::Identity),
             },
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("identity/{}", pk),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", identity.account_id),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, identity_uri.clone()),
+                outbound: AbacAttribute::new(
+                    iam_namespace_id,
+                    UriKind::Account(identity.account_id),
+                ),
             },
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("identity/{}", pk),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", identity.provider),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, identity_uri),
+                outbound: AbacAttribute::new(
+                    iam_namespace_id,
+                    UriKind::Namespace(identity.provider),
+                ),
             },
         ])
         .execute(conn)

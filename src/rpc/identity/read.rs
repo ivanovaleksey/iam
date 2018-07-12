@@ -46,6 +46,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.unwrap();
             move |(identity, subject_id)| {
+                use abac_attribute::{CollectionKind, OperationKind, UriKind};
                 use future::Either;
 
                 let iam_namespace_id = settings::iam_namespace_id();
@@ -55,28 +56,15 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
 
                     let msg = Authz {
                         namespace_ids: vec![iam_namespace_id],
-                        subject: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("account/{}", subject_id),
-                        }],
+                        subject: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            UriKind::Account(subject_id),
+                        )],
                         object: vec![
-                            AbacAttribute {
-                                namespace_id: iam_namespace_id,
-                                key: "uri".to_owned(),
-                                value: format!("namespace/{}", namespace_id),
-                            },
-                            AbacAttribute {
-                                namespace_id: iam_namespace_id,
-                                key: "uri".to_owned(),
-                                value: format!("identity/{}", pk),
-                            },
+                            AbacAttribute::new(iam_namespace_id, UriKind::Namespace(namespace_id)),
+                            AbacAttribute::new(iam_namespace_id, UriKind::Identity(pk)),
                         ],
-                        action: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "operation".to_owned(),
-                            value: "read".to_owned(),
-                        }],
+                        action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Read)],
                     };
 
                     let f = db.send(msg)
@@ -88,28 +76,15 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 } else {
                     let msg = Authz {
                         namespace_ids: vec![iam_namespace_id],
-                        subject: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("account/{}", subject_id),
-                        }],
+                        subject: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            UriKind::Account(subject_id),
+                        )],
                         object: vec![
-                            AbacAttribute {
-                                namespace_id: iam_namespace_id,
-                                key: "uri".to_owned(),
-                                value: format!("namespace/{}", namespace_id),
-                            },
-                            AbacAttribute {
-                                namespace_id: iam_namespace_id,
-                                key: "type".to_owned(),
-                                value: "identity".to_owned(),
-                            },
+                            AbacAttribute::new(iam_namespace_id, UriKind::Namespace(namespace_id)),
+                            AbacAttribute::new(iam_namespace_id, CollectionKind::Identity),
                         ],
-                        action: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "operation".to_owned(),
-                            value: "read".to_owned(),
-                        }],
+                        action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Read)],
                     };
 
                     let f = db.send(msg)

@@ -36,35 +36,24 @@ fn insert_namespace(conn: &PgConnection, changeset: NewNamespace) -> QueryResult
 }
 
 pub fn insert_namespace_links(conn: &PgConnection, namespace: &Namespace) -> QueryResult<usize> {
+    use abac_attribute::{CollectionKind, UriKind};
     use settings;
 
     let iam_namespace_id = settings::iam_namespace_id();
 
+    let namespace_uri = UriKind::Namespace(namespace.id);
     diesel::insert_into(abac_object::table)
         .values(vec![
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", namespace.id),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", namespace.account_id),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, namespace_uri.clone()),
+                outbound: AbacAttribute::new(
+                    iam_namespace_id,
+                    UriKind::Account(namespace.account_id),
+                ),
             },
             AbacObject {
-                inbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "uri".to_owned(),
-                    value: format!("namespace/{}", namespace.id),
-                },
-                outbound: AbacAttribute {
-                    namespace_id: iam_namespace_id,
-                    key: "type".to_owned(),
-                    value: "namespace".to_owned(),
-                },
+                inbound: AbacAttribute::new(iam_namespace_id, namespace_uri),
+                outbound: AbacAttribute::new(iam_namespace_id, CollectionKind::Namespace),
             },
         ])
         .execute(conn)

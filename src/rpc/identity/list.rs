@@ -22,28 +22,27 @@ pub struct Filter {
 pub type Response = rpc::ListResponse<rpc::identity::read::Response>;
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+    use abac_attribute::{CollectionKind, OperationKind, UriKind};
+
     let iam_namespace_id = settings::iam_namespace_id();
 
-    let mut objects = vec![AbacAttribute {
-        namespace_id: iam_namespace_id,
-        key: "type".to_owned(),
-        value: "identity".to_owned(),
-    }];
+    let mut objects = vec![AbacAttribute::new(
+        iam_namespace_id,
+        CollectionKind::Identity,
+    )];
 
     if let Some(provider) = req.filter.provider {
-        objects.push(AbacAttribute {
-            namespace_id: iam_namespace_id,
-            key: "uri".to_owned(),
-            value: format!("namespace/{}", provider),
-        });
+        objects.push(AbacAttribute::new(
+            iam_namespace_id,
+            UriKind::Namespace(provider),
+        ));
     }
 
     if let Some(account_id) = req.filter.account_id {
-        objects.push(AbacAttribute {
-            namespace_id: iam_namespace_id,
-            key: "uri".to_owned(),
-            value: format!("account/{}", account_id),
-        });
+        objects.push(AbacAttribute::new(
+            iam_namespace_id,
+            UriKind::Account(account_id),
+        ));
     }
 
     let subject = rpc::forbid_anonymous(meta.subject);
@@ -55,17 +54,12 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             move |subject_id| {
                 let msg = Authz {
                     namespace_ids: vec![iam_namespace_id],
-                    subject: vec![AbacAttribute {
-                        namespace_id: iam_namespace_id,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", subject_id),
-                    }],
+                    subject: vec![AbacAttribute::new(
+                        iam_namespace_id,
+                        UriKind::Account(subject_id),
+                    )],
                     object: objects,
-                    action: vec![AbacAttribute {
-                        namespace_id: iam_namespace_id,
-                        key: "operation".to_owned(),
-                        value: "list".to_owned(),
-                    }],
+                    action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::List)],
                 };
 
                 db.send(msg)

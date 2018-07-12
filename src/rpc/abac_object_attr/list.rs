@@ -3,6 +3,7 @@ use futures::future::{self, Future};
 use jsonrpc;
 use uuid::Uuid;
 
+use abac_attribute::{CollectionKind, OperationKind, UriKind};
 use actors::db::{abac_object_attr, authz::Authz};
 use rpc;
 use settings;
@@ -32,28 +33,15 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 let futures = namespace_ids.into_iter().map(move |id| {
                     let msg = Authz {
                         namespace_ids: vec![iam_namespace_id],
-                        subject: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "uri".to_owned(),
-                            value: format!("account/{}", subject_id),
-                        }],
+                        subject: vec![AbacAttribute::new(
+                            iam_namespace_id,
+                            UriKind::Account(subject_id),
+                        )],
                         object: vec![
-                            AbacAttribute {
-                                namespace_id: iam_namespace_id,
-                                key: "uri".to_owned(),
-                                value: format!("namespace/{}", id),
-                            },
-                            AbacAttribute {
-                                namespace_id: iam_namespace_id,
-                                key: "type".to_owned(),
-                                value: "abac_object".to_owned(),
-                            },
+                            AbacAttribute::new(iam_namespace_id, UriKind::Namespace(id)),
+                            AbacAttribute::new(iam_namespace_id, CollectionKind::AbacObject),
                         ],
-                        action: vec![AbacAttribute {
-                            namespace_id: iam_namespace_id,
-                            key: "operation".to_owned(),
-                            value: "list".to_owned(),
-                        }],
+                        action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::List)],
                     };
 
                     db.send(msg)
