@@ -29,10 +29,14 @@ impl Handler<Delete> for DbExecutor {
 fn delete_identity(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
     use schema::identity;
 
-    let target = identity::table.find(pk.as_tuple());
-    let identity = diesel::delete(target).get_result(conn)?;
+    conn.transaction::<_, _, _>(|| {
+        let target = identity::table.find(pk.as_tuple());
+        let identity = diesel::delete(target).get_result(conn)?;
 
-    Ok(identity)
+        delete_identity_links(conn, &identity)?;
+
+        Ok(identity)
+    })
 }
 
 fn delete_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
@@ -45,4 +49,21 @@ fn delete_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryRes
 
         Ok(identity)
     })
+}
+
+fn delete_identity_links(conn: &PgConnection, identity: &Identity) -> QueryResult<usize> {
+    use abac::{schema::abac_object, types::AbacAttribute};
+    use abac_attribute::UriKind;
+    use settings;
+
+    let pk = PrimaryKey {
+        provider: identity.provider,
+        label: identity.label.clone(),
+        uid: identity.uid.clone(),
+    };
+    let iam_namespace_id = settings::iam_namespace_id();
+
+    diesel::delete(abac_object::table.filter(
+        abac_object::inbound.eq(AbacAttribute::new(iam_namespace_id, UriKind::Identity(pk))),
+    )).execute(conn)
 }

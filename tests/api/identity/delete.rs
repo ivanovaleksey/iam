@@ -7,6 +7,7 @@ use uuid::Uuid;
 use abac::schema::{abac_object, abac_policy};
 use abac::types::AbacAttribute;
 
+use iam::abac_attribute::UriKind;
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
 use iam::schema::{account, identity};
 
@@ -104,23 +105,9 @@ mod with_existing_record {
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(0));
 
-                let found = abac_object::table
-                    .filter(abac_object::inbound.eq(AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
-                    }))
-                    .execute(&conn);
-                assert_eq!(found, Ok(0));
-
-                let found = abac_policy::table
-                    .filter(abac_policy::subject.eq(vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
-                    }]))
-                    .execute(&conn);
-                assert_eq!(found, Ok(0));
+                assert_eq!(identity_objects_count(&conn), Ok(0));
+                assert_eq!(account_objects_count(&conn), Ok(0));
+                assert_eq!(account_policies_count(&conn), Ok(0));
             }
         }
 
@@ -149,6 +136,10 @@ mod with_existing_record {
 
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(1));
+
+                assert_eq!(identity_objects_count(&conn), Ok(0));
+                assert_eq!(account_objects_count(&conn), Ok(2));
+                assert_eq!(account_policies_count(&conn), Ok(1));
             }
         }
 
@@ -176,6 +167,10 @@ mod with_existing_record {
 
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(1));
+
+                assert_eq!(identity_objects_count(&conn), Ok(3));
+                assert_eq!(account_objects_count(&conn), Ok(2));
+                assert_eq!(account_policies_count(&conn), Ok(1));
             }
         }
     }
@@ -208,23 +203,9 @@ mod with_existing_record {
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(0));
 
-                let found = abac_object::table
-                    .filter(abac_object::inbound.eq(AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
-                    }))
-                    .execute(&conn);
-                assert_eq!(found, Ok(0));
-
-                let found = abac_policy::table
-                    .filter(abac_policy::subject.eq(vec![AbacAttribute {
-                        namespace_id: *IAM_NAMESPACE_ID,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", *USER_ACCOUNT_ID_1),
-                    }]))
-                    .execute(&conn);
-                assert_eq!(found, Ok(0));
+                assert_eq!(identity_objects_count(&conn), Ok(0));
+                assert_eq!(account_objects_count(&conn), Ok(0));
+                assert_eq!(account_policies_count(&conn), Ok(0));
             }
         }
 
@@ -253,6 +234,10 @@ mod with_existing_record {
 
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(1));
+
+                assert_eq!(identity_objects_count(&conn), Ok(0));
+                assert_eq!(account_objects_count(&conn), Ok(2));
+                assert_eq!(account_policies_count(&conn), Ok(1));
             }
         }
 
@@ -280,6 +265,10 @@ mod with_existing_record {
 
                 let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
                 assert_eq!(found, Ok(1));
+
+                assert_eq!(identity_objects_count(&conn), Ok(3));
+                assert_eq!(account_objects_count(&conn), Ok(2));
+                assert_eq!(account_policies_count(&conn), Ok(1));
             }
         }
     }
@@ -428,4 +417,36 @@ fn create_additional_user_identity(conn: &PgConnection) -> Identity {
         ))
         .get_result(conn)
         .unwrap()
+}
+
+fn identity_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+    let pk = PrimaryKey {
+        provider: *FOXFORD_NAMESPACE_ID,
+        label: "oauth2".to_owned(),
+        uid: FOXFORD_USER_ID_1.to_string(),
+    };
+
+    abac_object::table
+        .filter(
+            abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, UriKind::Identity(pk))),
+        )
+        .execute(conn)
+}
+
+fn account_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+    abac_object::table
+        .filter(abac_object::inbound.eq(AbacAttribute::new(
+            *IAM_NAMESPACE_ID,
+            UriKind::Account(*USER_ACCOUNT_ID_1),
+        )))
+        .execute(conn)
+}
+
+fn account_policies_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+    abac_policy::table
+        .filter(abac_policy::subject.eq(vec![AbacAttribute::new(
+            *IAM_NAMESPACE_ID,
+            UriKind::Account(*USER_ACCOUNT_ID_1),
+        )]))
+        .execute(conn)
 }
