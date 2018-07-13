@@ -5,7 +5,7 @@ use iam::models::{Account, Namespace};
 use iam::schema::namespace;
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID};
+use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
 
 lazy_static! {
     static ref EXPECTED: String = {
@@ -77,6 +77,8 @@ mod with_enabled_namespace {
         {
             let conn = get_conn!(pool);
             assert!(!find_record(&conn).enabled);
+
+            assert_eq!(namespace_objects_count(&conn), Ok(0));
         }
     }
 
@@ -101,6 +103,8 @@ mod with_enabled_namespace {
         {
             let conn = get_conn!(pool);
             assert!(!find_record(&conn).enabled);
+
+            assert_eq!(namespace_objects_count(&conn), Ok(0));
         }
     }
 
@@ -122,6 +126,8 @@ mod with_enabled_namespace {
         {
             let conn = get_conn!(pool);
             assert!(find_record(&conn).enabled);
+
+            assert_eq!(namespace_objects_count(&conn), Ok(2));
         }
     }
 }
@@ -295,4 +301,17 @@ fn find_record(conn: &PgConnection) -> Namespace {
         .find(*FOXFORD_NAMESPACE_ID)
         .get_result(conn)
         .unwrap()
+}
+
+fn namespace_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+    use abac::schema::abac_object;
+    use abac::types::AbacAttribute;
+    use iam::abac_attribute::UriKind;
+
+    abac_object::table
+        .filter(abac_object::inbound.eq(AbacAttribute::new(
+            *IAM_NAMESPACE_ID,
+            UriKind::Namespace(*FOXFORD_NAMESPACE_ID),
+        )))
+        .execute(conn)
 }

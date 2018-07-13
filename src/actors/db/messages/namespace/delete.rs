@@ -21,7 +21,7 @@ impl Handler<Delete> for DbExecutor {
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
+        delete_namespace(conn, msg.id)
     }
 }
 
@@ -31,13 +31,32 @@ impl From<delete::Request> for Delete {
     }
 }
 
-fn call(conn: &PgConnection, msg: Delete) -> Result<Namespace> {
-    use schema::namespace::dsl::*;
+fn delete_namespace(conn: &PgConnection, id: Uuid) -> Result<Namespace> {
+    use schema::namespace;
 
-    let target = namespace.find(msg.id);
-    let object = diesel::update(target)
-        .set(enabled.eq(false))
-        .get_result(conn)?;
+    conn.transaction::<_, _, _>(|| {
+        let target = namespace::table.find(id);
+        let record = diesel::update(target)
+            .set(namespace::enabled.eq(false))
+            .get_result(conn)?;
 
-    Ok(object)
+        delete_namespace_links(conn, &record)?;
+
+        Ok(record)
+    })
+}
+
+fn delete_namespace_links(conn: &PgConnection, namespace: &Namespace) -> QueryResult<usize> {
+    use abac::{schema::abac_object, types::AbacAttribute};
+    use abac_attribute::UriKind;
+    use settings;
+
+    let iam_namespace_id = settings::iam_namespace_id();
+
+    diesel::delete(
+        abac_object::table.filter(abac_object::inbound.eq(AbacAttribute::new(
+            iam_namespace_id,
+            UriKind::Namespace(namespace.id),
+        ))),
+    ).execute(conn)
 }
