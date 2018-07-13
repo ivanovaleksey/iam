@@ -3,10 +3,6 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacObject;
-use abac::schema::abac_object;
-use abac::types::AbacAttribute;
-
 use iam::models::{Account, Namespace};
 use iam::schema::namespace;
 
@@ -31,22 +27,6 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
 
     diesel::update(&netology_namespace)
         .set(namespace::enabled.eq(false))
-        .execute(conn)
-        .unwrap();
-
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "type".to_owned(),
-                value: "namespace".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", iam_namespace.id),
-            },
-        })
         .execute(conn)
         .unwrap();
 

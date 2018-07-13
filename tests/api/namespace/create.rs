@@ -4,10 +4,6 @@ use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacObject;
-use abac::schema::abac_object;
-use abac::types::AbacAttribute;
-
 use iam::models::{Account, Namespace, NewNamespace};
 use iam::schema::namespace;
 
@@ -25,22 +21,6 @@ fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
     create_operations(conn, iam_namespace.id);
 
     let _foxford_account = create_account(conn, AccountKind::Foxford);
-
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "type".to_owned(),
-                value: "namespace".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", iam_namespace.id),
-            },
-        })
-        .execute(conn)
-        .unwrap();
 
     (iam_account, iam_namespace)
 }

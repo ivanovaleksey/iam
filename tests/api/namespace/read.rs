@@ -1,10 +1,6 @@
 use diesel::{self, prelude::*};
 use serde_json;
 
-use abac::models::AbacObject;
-use abac::schema::abac_object;
-use abac::types::AbacAttribute;
-
 use iam::models::{Account, Namespace};
 use iam::schema::namespace;
 
@@ -42,22 +38,6 @@ fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
     let iam_namespace = create_namespace(conn, NamespaceKind::Iam(iam_account.id));
 
     create_operations(conn, iam_namespace.id);
-
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "type".to_owned(),
-                value: "namespace".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", iam_namespace.id),
-            },
-        })
-        .execute(conn)
-        .unwrap();
 
     (iam_account, iam_namespace)
 }

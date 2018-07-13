@@ -88,8 +88,13 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     db::namespace::insert::insert_namespace_links(conn, &namespace).unwrap();
 
     if let Iam(_) = kind {
-        let objects = ["identity", "abac_subject", "abac_object", "abac_action"]
-            .iter()
+        let objects = [
+            "namespace",
+            "identity",
+            "abac_subject",
+            "abac_object",
+            "abac_action",
+        ].iter()
             .map(|collection| AbacObject {
                 inbound: AbacAttribute {
                     namespace_id: namespace.id,
