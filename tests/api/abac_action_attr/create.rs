@@ -2,10 +2,11 @@ use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
 use serde_json;
 
-use abac::models::{AbacAction, AbacObject, AbacPolicy};
-use abac::schema::{abac_action, abac_object, abac_policy};
+use abac::models::{AbacAction, AbacPolicy};
+use abac::schema::{abac_action, abac_policy};
 use abac::types::AbacAttribute;
 
+use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
@@ -21,12 +22,12 @@ lazy_static! {
             "result": {
                 "inbound": {
                     "key": "operation",
-                    "namespace_id": "IAM_NAMESPACE_ID",
+                    "namespace_id": "FOXFORD_NAMESPACE_ID",
                     "value": "OPERATION"
                 },
                 "outbound": {
                     "key": "operation",
-                    "namespace_id": "FOXFORD_NAMESPACE_ID",
+                    "namespace_id": "IAM_NAMESPACE_ID",
                     "value": "any"
                 }
             },
@@ -55,22 +56,6 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let foxford_account = create_account(conn, AccountKind::Foxford);
     let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: foxford_namespace.id,
-                key: "type".to_owned(),
-                value: "abac_action".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", foxford_namespace.id),
-            },
-        })
-        .execute(conn)
-        .unwrap();
-
     (
         (iam_account, iam_namespace),
         (foxford_account, foxford_namespace),
@@ -81,7 +66,7 @@ mod with_client {
     use super::*;
 
     #[test]
-    fn can_create_record() {
+    fn can_create_own_record() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -105,7 +90,32 @@ mod with_client {
     }
 
     #[test]
-    fn when_ownership_granted_to_another_client() {
+    fn cannot_create_alien_record() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+            let _ = create_account(&conn, AccountKind::Netology);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*NETOLOGY_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn), Ok(0));
+        }
+    }
+
+    #[test]
+    fn can_create_alien_record_when_permission_granted() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -117,21 +127,18 @@ mod with_client {
 
             diesel::insert_into(abac_policy::table)
                 .values(AbacPolicy {
-                    subject: vec![AbacAttribute {
-                        namespace_id: iam_namespace.id,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", netology_account.id),
-                    }],
-                    object: vec![AbacAttribute {
-                        namespace_id: iam_namespace.id,
-                        key: "uri".to_owned(),
-                        value: format!("namespace/{}", foxford_namespace.id),
-                    }],
-                    action: vec![AbacAttribute {
-                        namespace_id: iam_namespace.id,
-                        key: "operation".to_owned(),
-                        value: "any".to_owned(),
-                    }],
+                    subject: vec![AbacAttribute::new(
+                        iam_namespace.id,
+                        UriKind::Account(netology_account.id),
+                    )],
+                    object: vec![
+                        AbacAttribute::new(
+                            iam_namespace.id,
+                            UriKind::Namespace(foxford_namespace.id),
+                        ),
+                        AbacAttribute::new(iam_namespace.id, CollectionKind::AbacAction),
+                    ],
+                    action: vec![AbacAttribute::new(iam_namespace.id, OperationKind::Create)],
                     namespace_id: iam_namespace.id,
                 })
                 .execute(&conn)
@@ -188,12 +195,12 @@ fn build_request() -> serde_json::Value {
 fn build_record() -> AbacAction {
     AbacAction {
         inbound: AbacAttribute {
-            namespace_id: *IAM_NAMESPACE_ID,
+            namespace_id: *FOXFORD_NAMESPACE_ID,
             key: "operation".to_owned(),
             value: OPERATION.to_owned(),
         },
         outbound: AbacAttribute {
-            namespace_id: *FOXFORD_NAMESPACE_ID,
+            namespace_id: *IAM_NAMESPACE_ID,
             key: "operation".to_owned(),
             value: "any".to_owned(),
         },

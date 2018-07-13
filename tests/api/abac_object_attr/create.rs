@@ -7,6 +7,7 @@ use abac::models::{AbacObject, AbacPolicy};
 use abac::schema::{abac_object, abac_policy};
 use abac::types::AbacAttribute;
 
+use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
@@ -128,28 +129,18 @@ mod with_client {
 
             diesel::insert_into(abac_policy::table)
                 .values(AbacPolicy {
-                    subject: vec![AbacAttribute {
-                        namespace_id: iam_namespace.id,
-                        key: "uri".to_owned(),
-                        value: format!("account/{}", netology_account.id),
-                    }],
+                    subject: vec![AbacAttribute::new(
+                        iam_namespace.id,
+                        UriKind::Account(netology_account.id),
+                    )],
                     object: vec![
-                        AbacAttribute {
-                            namespace_id: iam_namespace.id,
-                            key: "uri".to_owned(),
-                            value: format!("namespace/{}", foxford_namespace.id),
-                        },
-                        AbacAttribute {
-                            namespace_id: iam_namespace.id,
-                            key: "type".to_owned(),
-                            value: "abac_object".to_owned(),
-                        },
+                        AbacAttribute::new(
+                            iam_namespace.id,
+                            UriKind::Namespace(foxford_namespace.id),
+                        ),
+                        AbacAttribute::new(iam_namespace.id, CollectionKind::AbacObject),
                     ],
-                    action: vec![AbacAttribute {
-                        namespace_id: iam_namespace.id,
-                        key: "operation".to_owned(),
-                        value: "create".to_owned(),
-                    }],
+                    action: vec![AbacAttribute::new(iam_namespace.id, OperationKind::Create)],
                     namespace_id: iam_namespace.id,
                 })
                 .execute(&conn)

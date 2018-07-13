@@ -1,9 +1,7 @@
 use abac::{models::AbacAction, types::AbacAttribute};
-use futures::future::{self, Future};
+use futures::{future, Future};
 
-use actors::db::{abac_action_attr, authz::Authz};
 use rpc;
-use settings;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
@@ -27,27 +25,19 @@ impl From<AbacAction> for Response {
 }
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
-    let subject = rpc::forbid_anonymous(meta.subject);
-    future::result(subject)
+    use abac_attribute::{CollectionKind, OperationKind};
+    use actors::db::abac_action_attr;
+    use rpc::authorize_collection;
+
+    let collection = CollectionKind::AbacAction;
+    let operation = OperationKind::Create;
+
+    future::result(rpc::forbid_anonymous(meta.subject))
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.outbound.namespace_id;
+            let inbound_ns_id = req.inbound.namespace_id;
             move |subject_id| {
-                use abac_attribute::{CollectionKind, OperationKind, UriKind};
-
-                let iam_namespace_id = settings::iam_namespace_id();
-
-                let msg = Authz {
-                    namespace_ids: vec![iam_namespace_id],
-                    subject: vec![AbacAttribute::new(
-                        iam_namespace_id,
-                        UriKind::Account(subject_id),
-                    )],
-                    object: vec![AbacAttribute::new(namespace_id, CollectionKind::AbacAction)],
-                    action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Create)],
-                };
-
-                db.send(msg).from_err().and_then(rpc::ensure_authorized)
+                authorize_collection(&db, inbound_ns_id, subject_id, collection, operation)
             }
         })
         .and_then({
@@ -56,7 +46,6 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 let msg = abac_action_attr::insert::Insert::from(req);
                 db.send(msg).from_err().and_then(|res| {
                     debug!("abac action insert res: {:?}", res);
-
                     Ok(Response::from(res?))
                 })
             }
