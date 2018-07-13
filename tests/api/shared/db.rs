@@ -89,6 +89,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
 
     if let Iam(_) = kind {
         let objects = [
+            "account",
             "namespace",
             "identity",
             "abac_subject",
