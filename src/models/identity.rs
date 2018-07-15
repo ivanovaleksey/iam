@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use diesel;
+use failure;
 use uuid::Uuid;
 
 use std::{fmt, str};
@@ -20,6 +21,24 @@ impl PrimaryKey {
     }
 }
 
+#[derive(Debug, SqlType, QueryId)]
+#[postgres(type_name = "identity_composite_pkey")]
+pub struct SqlPrimaryKey;
+
+use diesel::pg::Pg;
+use diesel::serialize::{self, Output, ToSql, WriteTuple};
+use diesel::sql_types::{Text, Uuid as SqlUuid};
+use std::io::Write;
+
+impl ToSql<SqlPrimaryKey, Pg> for PrimaryKey {
+    fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
+        WriteTuple::<(SqlUuid, Text, Text)>::write_tuple(
+            &(self.provider, self.label.as_str(), self.uid.as_str()),
+            out,
+        )
+    }
+}
+
 impl From<Identity> for PrimaryKey {
     fn from(identity: Identity) -> Self {
         PrimaryKey {
@@ -36,7 +55,6 @@ impl fmt::Display for PrimaryKey {
     }
 }
 
-use failure;
 impl str::FromStr for PrimaryKey {
     type Err = failure::Error;
 

@@ -29,22 +29,23 @@ impl Handler<Select> for DbExecutor {
 
 fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> QueryResult<Vec<Identity>> {
     use diesel;
+    use diesel::sql_types::Array;
+    use models::identity::SqlPrimaryKey;
     use schema::identity;
 
     // TODO: remove it once Diesel support (provider, label, uid) IN ((), (), ()) syntax
-    let values = ids.iter()
-        .map(|pk| format!("('{}','{}','{}')", pk.provider, pk.label, pk.uid))
-        .collect::<Vec<_>>()
-        .join(",");
-
-    let filter = format!(
-        "(identity.provider, identity.label, identity.uid) IN ({})",
-        values
-    );
-
     let query = identity::table
-        .filter(diesel::dsl::sql(&filter))
+        .filter(
+            diesel::dsl::sql(
+                "array[(identity.provider, identity.label, identity.uid) :: identity_composite_pkey] <@ ",
+            ).bind::<Array<SqlPrimaryKey>, _>(ids),
+        )
         .order(identity::created_at.asc());
+
+    println!(
+        "<<<- QUERY: {}",
+        diesel::debug_query::<diesel::pg::Pg, _>(&query)
+    );
 
     let items = query.load(conn)?;
 
