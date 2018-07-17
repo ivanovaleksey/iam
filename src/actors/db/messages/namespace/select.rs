@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use models::Namespace;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Select {
@@ -12,11 +11,11 @@ pub struct Select {
 }
 
 impl Message for Select {
-    type Result = Result<Vec<Namespace>>;
+    type Result = QueryResult<Vec<Namespace>>;
 }
 
 impl Handler<Select> for DbExecutor {
-    type Result = Result<Vec<Namespace>>;
+    type Result = QueryResult<Vec<Namespace>>;
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -24,7 +23,7 @@ impl Handler<Select> for DbExecutor {
     }
 }
 
-fn call(conn: &PgConnection, msg: Select) -> Result<Vec<Namespace>> {
+fn call(conn: &PgConnection, msg: Select) -> QueryResult<Vec<Namespace>> {
     use diesel::dsl::any;
     use schema::namespace::dsl::*;
 

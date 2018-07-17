@@ -1,6 +1,6 @@
 use abac::types::AbacAttribute;
 use futures::Future;
-use jsonrpc::{self, BoxFuture};
+use jsonrpc::BoxFuture;
 use uuid::Uuid;
 
 use actors::db::authz::Authz;
@@ -46,15 +46,11 @@ impl Rpc for RpcImpl {
         msg.namespace_ids.push(iam_namespace_id);
         msg.namespace_ids.dedup();
 
-        let fut = meta.db
-            .unwrap()
-            .send(msg)
-            .map_err(|_| jsonrpc::Error::internal_error())
-            .and_then(|res| {
-                let res = res.map_err(rpc::error::Error::Db)?;
-                Ok(Response::new(res))
-            });
+        let db = meta.db.unwrap();
+        let fut = db.send(msg)
+            .from_err::<rpc::error::Error>()
+            .and_then(|res| Ok(Response::new(res?)));
 
-        Box::new(fut)
+        Box::new(fut.from_err())
     }
 }

@@ -1,6 +1,6 @@
 use actix::{Addr, Syn};
 use diesel::QueryResult;
-use jsonrpc::{self, MetaIoHandler, Metadata};
+use jsonrpc::{MetaIoHandler, Metadata};
 use serde::de::{self, Deserialize, Deserializer};
 use serde_json;
 use uuid::{self, Uuid};
@@ -155,14 +155,14 @@ where
     }
 }
 
-pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), jsonrpc::Error> {
-    if res.map_err(error::Error::Db)? {
+pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), error::Error> {
+    if res? {
         Ok(())
     } else {
-        Err(error::Error::Forbidden)?
+        Err(error::Error::Forbidden)
     }
 }
 
-pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, jsonrpc::Error> {
-    subject.ok_or_else(|| error::Error::Forbidden.into())
+pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, error::Error> {
+    subject.ok_or_else(|| error::Error::Forbidden)
 }

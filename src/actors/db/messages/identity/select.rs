@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use models::{identity::PrimaryKey, Identity};
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub enum Select {
@@ -13,11 +12,11 @@ pub enum Select {
 }
 
 impl Message for Select {
-    type Result = Result<Vec<Identity>>;
+    type Result = QueryResult<Vec<Identity>>;
 }
 
 impl Handler<Select> for DbExecutor {
-    type Result = Result<Vec<Identity>>;
+    type Result = QueryResult<Vec<Identity>>;
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -28,7 +27,7 @@ impl Handler<Select> for DbExecutor {
     }
 }
 
-fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> Result<Vec<Identity>> {
+fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> QueryResult<Vec<Identity>> {
     use diesel;
     use schema::identity;
 
@@ -52,7 +51,7 @@ fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> Result<Vec<Identity
     Ok(items)
 }
 
-fn select_by_account_id(conn: &PgConnection, account_id: Uuid) -> Result<Vec<Identity>> {
+fn select_by_account_id(conn: &PgConnection, account_id: Uuid) -> QueryResult<Vec<Identity>> {
     use schema::identity;
 
     let query = identity::table

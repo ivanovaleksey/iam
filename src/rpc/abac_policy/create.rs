@@ -55,21 +55,18 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Create)],
                 };
 
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(rpc::ensure_authorized)
+                db.send(msg).from_err().and_then(rpc::ensure_authorized)
             }
         })
         .and_then({
             let db = meta.db.unwrap();
             move |_| {
                 let msg = abac_policy::insert::Insert::from(req);
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        debug!("abac policy insert res: {:?}", res);
-                        Ok(Response::from(res?))
-                    })
+                db.send(msg).from_err().and_then(|res| {
+                    debug!("abac policy insert res: {:?}", res);
+                    Ok(Response::from(res?))
+                })
             }
         })
+        .from_err()
 }

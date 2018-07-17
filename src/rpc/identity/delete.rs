@@ -20,20 +20,17 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             move |subject_id| {
                 let msg = identity::find::Find::from(req);
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(move |res| {
-                        debug!("identity find res: {:?}", res);
+                db.send(msg).from_err().and_then(move |res| {
+                    debug!("identity find res: {:?}", res);
 
-                        let res = match res {
-                            Ok(identity) => Ok(Some(identity)),
-                            Err(diesel::result::Error::NotFound) => Ok(None),
-                            Err(e) => Err(e),
-                        };
+                    let identity = match res {
+                        Ok(identity) => Ok(Some(identity)),
+                        Err(diesel::result::Error::NotFound) => Ok(None),
+                        Err(e) => Err(e),
+                    }?;
 
-                        let identity = res.map_err(rpc::error::Error::Db)?;
-                        Ok((identity, subject_id))
-                    })
+                    Ok((identity, subject_id))
+                })
             }
         })
         .and_then({
@@ -60,7 +57,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     };
 
                     let f = db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
+                        .from_err()
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| Ok(identity));
 
@@ -80,12 +77,9 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     };
 
                     let f = db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
+                        .from_err()
                         .and_then(rpc::ensure_authorized)
-                        .and_then(|_| {
-                            let e = rpc::error::Error::Db(diesel::result::Error::NotFound);
-                            Err(e.into())
-                        });
+                        .and_then(|_| Err(diesel::result::Error::NotFound.into()));
 
                     Either::B(f)
                 }
@@ -97,7 +91,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 let msg = identity::select::Select::ByAccountId(identity.account_id);
 
                 db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
+                    .from_err()
                     .and_then(|res| {
                         let items = res?;
                         Ok(items.len())
@@ -114,26 +108,18 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                             // Remove both identity and account.
 
                             let msg = identity::delete::Delete::IdentityWithAccount(pk);
-                            let f = db.send(msg)
-                                .map_err(|_| jsonrpc::Error::internal_error())
-                                .and_then(|res| {
-                                    debug!("identity delete with account res: {:?}", res);
-
-                                    let identity = res.map_err(rpc::error::Error::Db)?;
-                                    Ok(identity)
-                                });
+                            let f = db.send(msg).from_err().and_then(|res| {
+                                debug!("identity delete with account res: {:?}", res);
+                                Ok(res?)
+                            });
 
                             Either::A(f)
                         } else {
                             let msg = identity::delete::Delete::Identity(pk);
-                            let f = db.send(msg)
-                                .map_err(|_| jsonrpc::Error::internal_error())
-                                .and_then(|res| {
-                                    debug!("identity delete res: {:?}", res);
-
-                                    let identity = res.map_err(rpc::error::Error::Db)?;
-                                    Ok(identity)
-                                });
+                            let f = db.send(msg).from_err().and_then(|res| {
+                                debug!("identity delete res: {:?}", res);
+                                Ok(res?)
+                            });
 
                             Either::B(f)
                         }
@@ -141,4 +127,5 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             }
         })
         .and_then({ |identity| Ok(Response::from(identity)) })
+        .from_err()
 }

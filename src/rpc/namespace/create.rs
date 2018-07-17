@@ -60,9 +60,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Create)],
                 };
 
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(rpc::ensure_authorized)
+                db.send(msg).from_err().and_then(rpc::ensure_authorized)
             }
         })
         .and_then({
@@ -70,13 +68,11 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             move |_| {
                 let changeset = NewNamespace::from(req);
                 let msg = namespace::insert::Insert(changeset);
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        debug!("namespace insert res: {:?}", res);
-                        let namespace = res.map_err(rpc::error::Error::Db)?;
-                        Ok(Response::from(namespace))
-                    })
+                db.send(msg).from_err().and_then(|res| {
+                    debug!("namespace insert res: {:?}", res);
+                    Ok(Response::from(res?))
+                })
             }
         })
+        .from_err()
 }

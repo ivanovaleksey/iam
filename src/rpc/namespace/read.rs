@@ -22,20 +22,17 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             move |subject_id| {
                 let msg = namespace::find::Find::from(req);
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(move |res| {
-                        debug!("namespace find res: {:?}", res);
+                db.send(msg).from_err().and_then(move |res| {
+                    debug!("namespace find res: {:?}", res);
 
-                        let res = match res {
-                            Ok(namespace) => Ok(Some(namespace)),
-                            Err(diesel::result::Error::NotFound) => Ok(None),
-                            Err(e) => Err(e),
-                        };
+                    let namespace = match res {
+                        Ok(namespace) => Ok(Some(namespace)),
+                        Err(diesel::result::Error::NotFound) => Ok(None),
+                        Err(e) => Err(e),
+                    }?;
 
-                        let namespace = res.map_err(rpc::error::Error::Db)?;
-                        Ok((namespace, subject_id))
-                    })
+                    Ok((namespace, subject_id))
+                })
             }
         })
         .and_then({
@@ -61,7 +58,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     };
 
                     let f = db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
+                        .from_err()
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| Ok(namespace));
 
@@ -81,16 +78,14 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     };
 
                     let f = db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
+                        .from_err()
                         .and_then(rpc::ensure_authorized)
-                        .and_then(|_| {
-                            let e = rpc::error::Error::Db(diesel::result::Error::NotFound);
-                            Err(e.into())
-                        });
+                        .and_then(|_| Err(diesel::result::Error::NotFound.into()));
 
                     Either::B(f)
                 }
             }
         })
         .and_then(|namespace| Ok(Response::from(namespace)))
+        .from_err()
 }

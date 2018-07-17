@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use rpc::abac_policy::list;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Select {
@@ -13,11 +12,11 @@ pub struct Select {
 }
 
 impl Message for Select {
-    type Result = Result<Vec<AbacPolicy>>;
+    type Result = QueryResult<Vec<AbacPolicy>>;
 }
 
 impl Handler<Select> for DbExecutor {
-    type Result = Result<Vec<AbacPolicy>>;
+    type Result = QueryResult<Vec<AbacPolicy>>;
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -33,7 +32,7 @@ impl From<list::Request> for Select {
     }
 }
 
-fn call(conn: &PgConnection, msg: Select) -> Result<Vec<AbacPolicy>> {
+fn call(conn: &PgConnection, msg: Select) -> QueryResult<Vec<AbacPolicy>> {
     use abac::schema::abac_policy::dsl::*;
     use diesel::dsl::any;
 

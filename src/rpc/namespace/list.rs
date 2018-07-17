@@ -47,9 +47,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::List)],
                 };
 
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(rpc::ensure_authorized)
+                db.send(msg).from_err().and_then(rpc::ensure_authorized)
             }
         })
         .and_then({
@@ -63,23 +61,19 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     offset: 0,
                     limit: 100,
                 };
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        let attrs = res.map_err(rpc::error::Error::Db)?;
-                        let ids = attrs
-                            .into_iter()
-                            .filter_map(|attr| {
-                                let mut kv = attr.value.splitn(2, '/');
-                                match (kv.next(), kv.next()) {
-                                    (Some("namespace"), Some(v)) => Uuid::parse_str(v).ok(),
-                                    _ => None,
-                                }
-                            })
-                            .collect::<Vec<_>>();
+                db.send(msg).from_err().and_then(|res| {
+                    let ids = res?.into_iter()
+                        .filter_map(|attr| {
+                            let mut kv = attr.value.splitn(2, '/');
+                            match (kv.next(), kv.next()) {
+                                (Some("namespace"), Some(v)) => Uuid::parse_str(v).ok(),
+                                _ => None,
+                            }
+                        })
+                        .collect::<Vec<_>>();
 
-                        Ok(ids)
-                    })
+                    Ok(ids)
+                })
             }
         })
         .and_then({
@@ -87,12 +81,11 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
 
             move |ids| {
                 let msg = namespace::select::Select { ids };
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        debug!("namespace select res: {:?}", res);
-                        Ok(Response::from(res?))
-                    })
+                db.send(msg).from_err().and_then(|res| {
+                    debug!("namespace select res: {:?}", res);
+                    Ok(Response::from(res?))
+                })
             }
         })
+        .from_err()
 }

@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use rpc::abac_policy::read;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Find {
@@ -16,11 +15,11 @@ pub struct Find {
 }
 
 impl Message for Find {
-    type Result = Result<AbacPolicy>;
+    type Result = QueryResult<AbacPolicy>;
 }
 
 impl Handler<Find> for DbExecutor {
-    type Result = Result<AbacPolicy>;
+    type Result = QueryResult<AbacPolicy>;
 
     fn handle(&mut self, msg: Find, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -39,7 +38,7 @@ impl From<read::Request> for Find {
     }
 }
 
-fn call(conn: &PgConnection, msg: Find) -> Result<AbacPolicy> {
+fn call(conn: &PgConnection, msg: Find) -> QueryResult<AbacPolicy> {
     use abac::schema::abac_policy::dsl::*;
 
     let pk = (msg.subject, msg.object, msg.action, msg.namespace_id);

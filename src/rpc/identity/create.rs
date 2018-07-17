@@ -62,9 +62,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Create)],
                 };
 
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(rpc::ensure_authorized)
+                db.send(msg).from_err().and_then(rpc::ensure_authorized)
             }
         })
         .and_then({
@@ -80,26 +78,24 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 };
                 let msg = identity::find::Find(pk);
 
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(move |res| {
-                        debug!("identity find res: {:?}", res);
+                db.send(msg).from_err().and_then(move |res| {
+                    debug!("identity find res: {:?}", res);
 
-                        match res {
-                            Ok(record) => {
-                                error!("identity already exists: {:?}", record);
-                                let e = diesel::result::Error::DatabaseError(
-                                    diesel::result::DatabaseErrorKind::UniqueViolation,
-                                    Box::new("Identity already exists".to_owned()),
-                                );
-                                Err(e).map_err(rpc::error::Error::Db)?
-                            }
-                            Err(e) => match e {
-                                diesel::result::Error::NotFound => Ok(()),
-                                _ => Err(e).map_err(rpc::error::Error::Db)?,
-                            },
+                    match res {
+                        Ok(record) => {
+                            error!("identity already exists: {:?}", record);
+                            let e = diesel::result::Error::DatabaseError(
+                                diesel::result::DatabaseErrorKind::UniqueViolation,
+                                Box::new("Identity already exists".to_owned()),
+                            );
+                            Err(e)?
                         }
-                    })
+                        Err(e) => match e {
+                            diesel::result::Error::NotFound => Ok(()),
+                            _ => Err(e)?,
+                        },
+                    }
+                })
             }
         })
         .and_then({
@@ -114,14 +110,11 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 };
                 let msg = identity::insert::Insert::IdentityWithAccount(pk);
 
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        debug!("identity insert res: {:?}", res);
-
-                        let identity = res.map_err(rpc::error::Error::Db)?;
-                        Ok(Response::from(identity))
-                    })
+                db.send(msg).from_err().and_then(|res| {
+                    debug!("identity insert res: {:?}", res);
+                    Ok(Response::from(res?))
+                })
             }
         })
+        .from_err()
 }

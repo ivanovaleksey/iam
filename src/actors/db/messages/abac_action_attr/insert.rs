@@ -4,7 +4,6 @@ use diesel::{self, prelude::*};
 
 use actors::DbExecutor;
 use rpc::abac_action_attr::create;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Insert {
@@ -13,11 +12,11 @@ pub struct Insert {
 }
 
 impl Message for Insert {
-    type Result = Result<AbacAction>;
+    type Result = QueryResult<AbacAction>;
 }
 
 impl Handler<Insert> for DbExecutor {
-    type Result = Result<AbacAction>;
+    type Result = QueryResult<AbacAction>;
 
     fn handle(&mut self, msg: Insert, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -34,7 +33,7 @@ impl From<create::Request> for Insert {
     }
 }
 
-fn call(conn: &PgConnection, msg: Insert) -> Result<AbacAction> {
+fn call(conn: &PgConnection, msg: Insert) -> QueryResult<AbacAction> {
     use abac::schema::abac_action::dsl::*;
 
     let changeset = AbacAction {

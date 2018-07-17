@@ -4,7 +4,6 @@ use diesel::{self, prelude::*};
 
 use actors::DbExecutor;
 use rpc::abac_action_attr::delete;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Delete {
@@ -13,11 +12,11 @@ pub struct Delete {
 }
 
 impl Message for Delete {
-    type Result = Result<AbacAction>;
+    type Result = QueryResult<AbacAction>;
 }
 
 impl Handler<Delete> for DbExecutor {
-    type Result = Result<AbacAction>;
+    type Result = QueryResult<AbacAction>;
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -34,7 +33,7 @@ impl From<delete::Request> for Delete {
     }
 }
 
-fn call(conn: &PgConnection, msg: Delete) -> Result<AbacAction> {
+fn call(conn: &PgConnection, msg: Delete) -> QueryResult<AbacAction> {
     use abac::schema::abac_action::dsl::*;
 
     let pk = (msg.inbound, msg.outbound);

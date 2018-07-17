@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use models::Namespace;
-use rpc::error::Result;
 use rpc::namespace::delete;
 
 #[derive(Debug)]
@@ -13,11 +12,11 @@ pub struct Delete {
 }
 
 impl Message for Delete {
-    type Result = Result<Namespace>;
+    type Result = QueryResult<Namespace>;
 }
 
 impl Handler<Delete> for DbExecutor {
-    type Result = Result<Namespace>;
+    type Result = QueryResult<Namespace>;
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -31,7 +30,7 @@ impl From<delete::Request> for Delete {
     }
 }
 
-fn delete_namespace(conn: &PgConnection, id: Uuid) -> Result<Namespace> {
+fn delete_namespace(conn: &PgConnection, id: Uuid) -> QueryResult<Namespace> {
     use schema::namespace;
 
     conn.transaction::<_, _, _>(|| {

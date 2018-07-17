@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use rpc::abac_policy::delete;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Delete {
@@ -16,11 +15,11 @@ pub struct Delete {
 }
 
 impl Message for Delete {
-    type Result = Result<AbacPolicy>;
+    type Result = QueryResult<AbacPolicy>;
 }
 
 impl Handler<Delete> for DbExecutor {
-    type Result = Result<AbacPolicy>;
+    type Result = QueryResult<AbacPolicy>;
 
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -39,7 +38,7 @@ impl From<delete::Request> for Delete {
     }
 }
 
-fn call(conn: &PgConnection, msg: Delete) -> Result<AbacPolicy> {
+fn call(conn: &PgConnection, msg: Delete) -> QueryResult<AbacPolicy> {
     use abac::schema::abac_policy::dsl::*;
 
     let pk = (msg.subject, msg.object, msg.action, msg.namespace_id);

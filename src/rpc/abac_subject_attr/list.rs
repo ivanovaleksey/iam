@@ -45,9 +45,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::List)],
                     };
 
-                    db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
-                        .and_then(rpc::ensure_authorized)
+                    db.send(msg).from_err().and_then(rpc::ensure_authorized)
                 });
 
                 future::join_all(futures)
@@ -57,13 +55,12 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.unwrap();
             move |_| {
                 let msg = abac_subject_attr::select::Select::from(req);
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(|res| {
-                        debug!("abac subject select res: {:?}", res);
+                db.send(msg).from_err().and_then(|res| {
+                    debug!("abac subject select res: {:?}", res);
 
-                        Ok(Response::from(res?))
-                    })
+                    Ok(Response::from(res?))
+                })
             }
         })
+        .from_err()
 }

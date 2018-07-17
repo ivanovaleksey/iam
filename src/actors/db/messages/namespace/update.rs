@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use models::Namespace;
-use rpc::error::Result;
 use rpc::namespace::update;
 use schema::namespace;
 
@@ -17,11 +16,11 @@ pub struct Update {
 }
 
 impl Message for Update {
-    type Result = Result<Namespace>;
+    type Result = QueryResult<Namespace>;
 }
 
 impl Handler<Update> for DbExecutor {
-    type Result = Result<Namespace>;
+    type Result = QueryResult<Namespace>;
 
     fn handle(&mut self, msg: Update, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -39,7 +38,7 @@ impl From<update::Request> for Update {
     }
 }
 
-fn call(conn: &PgConnection, msg: Update) -> Result<Namespace> {
+fn call(conn: &PgConnection, msg: Update) -> QueryResult<Namespace> {
     let object = msg.save_changes(conn)?;
 
     Ok(object)

@@ -4,7 +4,6 @@ use diesel::prelude::*;
 
 use actors::DbExecutor;
 use rpc::abac_object_attr::read;
-use rpc::error::Result;
 
 #[derive(Debug)]
 pub struct Find {
@@ -13,11 +12,11 @@ pub struct Find {
 }
 
 impl Message for Find {
-    type Result = Result<AbacObject>;
+    type Result = QueryResult<AbacObject>;
 }
 
 impl Handler<Find> for DbExecutor {
-    type Result = Result<AbacObject>;
+    type Result = QueryResult<AbacObject>;
 
     fn handle(&mut self, msg: Find, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
@@ -34,7 +33,7 @@ impl From<read::Request> for Find {
     }
 }
 
-fn call(conn: &PgConnection, msg: Find) -> Result<AbacObject> {
+fn call(conn: &PgConnection, msg: Find) -> QueryResult<AbacObject> {
     use abac::schema::abac_object::dsl::*;
 
     let pk = (msg.inbound, msg.outbound);

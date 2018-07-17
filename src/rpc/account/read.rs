@@ -32,20 +32,17 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             move |subject_id| {
                 let msg = account::find::Find::from(req);
-                db.send(msg)
-                    .map_err(|_| jsonrpc::Error::internal_error())
-                    .and_then(move |res| {
-                        debug!("account find res: {:?}", res);
+                db.send(msg).from_err().and_then(move |res| {
+                    debug!("account find res: {:?}", res);
 
-                        let res = match res {
-                            Ok(account) => Ok(Some(account)),
-                            Err(diesel::result::Error::NotFound) => Ok(None),
-                            Err(e) => Err(e),
-                        };
+                    let account = match res {
+                        Ok(account) => Ok(Some(account)),
+                        Err(diesel::result::Error::NotFound) => Ok(None),
+                        Err(e) => Err(e),
+                    }?;
 
-                        let account = res.map_err(rpc::error::Error::Db)?;
-                        Ok((account, subject_id))
-                    })
+                    Ok((account, subject_id))
+                })
             }
         })
         .and_then({
@@ -71,7 +68,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     };
 
                     let f = db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
+                        .from_err()
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| Ok(account));
 
@@ -91,16 +88,14 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     };
 
                     let f = db.send(msg)
-                        .map_err(|_| jsonrpc::Error::internal_error())
+                        .from_err()
                         .and_then(rpc::ensure_authorized)
-                        .and_then(|_| {
-                            let e = rpc::error::Error::Db(diesel::result::Error::NotFound);
-                            Err(e.into())
-                        });
+                        .and_then(|_| Err(diesel::result::Error::NotFound.into()));
 
                     Either::B(f)
                 }
             }
         })
         .and_then(|account| Ok(Response::from(account)))
+        .from_err()
 }
