@@ -3,7 +3,6 @@ use diesel::prelude::*;
 
 use actors::DbExecutor;
 use models::{identity::PrimaryKey, Identity};
-use rpc::identity::read;
 
 #[derive(Debug)]
 pub struct Find(pub PrimaryKey);
@@ -18,18 +17,6 @@ impl Handler<Find> for DbExecutor {
     fn handle(&mut self, msg: Find, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
         call(conn, &msg.0)
-    }
-}
-
-impl From<read::Request> for Find {
-    fn from(req: read::Request) -> Self {
-        let pk = PrimaryKey {
-            provider: req.provider,
-            label: req.label,
-            uid: req.uid,
-        };
-
-        Find(pk)
     }
 }
 

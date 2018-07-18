@@ -1,31 +1,24 @@
 use abac::types::AbacAttribute;
 use diesel;
 use futures::future::{self, Future};
-use uuid::Uuid;
 
 use actors::db::{authz::Authz, identity};
 use models::identity::PrimaryKey;
 use rpc;
 use settings;
 
-#[derive(Debug, Deserialize)]
-pub struct Request {
-    pub provider: Uuid,
-    pub label: String,
-    pub uid: String,
-}
-
+pub type Request = rpc::identity::create::Request;
 pub type Response = rpc::identity::create::Response;
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
     let subject = rpc::forbid_anonymous(meta.subject);
-    let namespace_id = req.provider;
+    let namespace_id = req.id.provider;
 
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
             move |subject_id| {
-                let msg = identity::find::Find::from(req);
+                let msg = identity::find::Find(req.id);
                 db.send(msg).from_err().and_then(move |res| {
                     debug!("identity find res: {:?}", res);
 

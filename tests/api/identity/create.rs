@@ -10,7 +10,7 @@ use abac::models::AbacPolicy;
 use abac::schema::abac_policy;
 use abac::types::AbacAttribute;
 
-use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
+use iam::models::{identity::PrimaryKey, Account, Namespace};
 use iam::schema::{account, identity};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
@@ -66,19 +66,21 @@ mod with_client {
         let body = srv.execute(resp.body()).unwrap();
 
         if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
-            let identity: Identity = serde_json::from_value(resp.result).unwrap();
+            use iam::rpc::identity::create::Response;
+
+            let identity: Response = serde_json::from_value(resp.result).unwrap();
 
             let pk = build_pk();
-            assert_eq!(identity.provider, pk.provider);
-            assert_eq!(identity.label, pk.label);
-            assert_eq!(identity.uid, pk.uid);
+            assert_eq!(identity.id.provider, pk.provider);
+            assert_eq!(identity.id.label, pk.label);
+            assert_eq!(identity.id.uid, pk.uid);
 
             {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(1));
 
                 let created_account = account::table
-                    .find(identity.account_id)
+                    .find(identity.data.account_id)
                     .get_result::<Account>(&conn)
                     .unwrap();
 
@@ -94,14 +96,14 @@ mod with_client {
                         {
                             "namespace_id": *IAM_NAMESPACE_ID,
                             "key": "uri",
-                            "value": format!("account/{}", identity.account_id),
+                            "value": format!("account/{}", identity.data.account_id),
                         }
                     ],
                     "object": [
                         {
                             "namespace_id": *IAM_NAMESPACE_ID,
                             "key": "uri",
-                            "value": format!("identity/{}", PrimaryKey::from(identity.clone())),
+                            "value": format!("identity/{}", identity.id),
                         }
                     ],
                     "action": [
@@ -154,7 +156,7 @@ mod with_client {
                         {
                             "namespace_id": *IAM_NAMESPACE_ID,
                             "key": "uri",
-                            "value": format!("identity/{}", PrimaryKey::from(identity.clone())),
+                            "value": format!("identity/{}", identity.id),
                         }
                     ],
                     "action": [
@@ -345,7 +347,9 @@ fn build_request() -> serde_json::Value {
     json!({
         "jsonrpc": "2.0",
         "method": "identity.create",
-        "params": [payload],
+        "params": [{
+            "id": payload
+        }],
         "id": "qwerty"
     })
 }
