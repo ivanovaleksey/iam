@@ -1,5 +1,5 @@
 use abac::types::AbacAttribute;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use futures::future::{self, Future};
 use uuid::Uuid;
 
@@ -21,7 +21,7 @@ pub struct Response {
     label: String,
     account_id: Uuid,
     enabled: bool,
-    created_at: NaiveDateTime,
+    created_at: DateTime<Utc>,
 }
 
 impl From<Namespace> for Response {

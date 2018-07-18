@@ -40,7 +40,7 @@ filter | object | _required_ | -
             "label": "trusted",
             "uid": "foxford.ru",
             "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
-            "created_at": "2018-06-02T08:40:00"
+            "created_at": "2018-06-02T08:40:00Z"
         }
     ],
     "id": "qwerty"

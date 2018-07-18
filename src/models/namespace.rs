@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use models::Account;
@@ -13,7 +13,7 @@ pub struct Namespace {
     pub label: String,
     pub account_id: Uuid,
     pub enabled: bool,
-    pub created_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(AsChangeset, Insertable, Debug, Serialize)]

@@ -40,7 +40,7 @@ enabled | bool   | -          | -
         "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
         "label": "foxford.ru",
         "enabled": false,
-        "created_at": "2018-05-30T08:40:00"
+        "created_at": "2018-05-30T08:40:00Z"
     },
     "id": "qwerty"
 }

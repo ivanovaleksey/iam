@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use diesel;
 use uuid::Uuid;
 
@@ -67,7 +67,7 @@ pub struct Identity {
     pub label: String,
     pub uid: String,
     pub account_id: Uuid,
-    pub created_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(AsChangeset, Insertable, Debug)]

@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use models::Account;
@@ -12,5 +12,5 @@ pub struct RefreshToken {
     account_id: Uuid,
     algorithm: String,
     keys: Vec<u8>,
-    issued_at: NaiveDateTime,
+    issued_at: DateTime<Utc>,
 }

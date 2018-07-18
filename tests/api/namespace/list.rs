@@ -57,7 +57,7 @@ fn admin_can_list_any_client_namespaces() {
         "result": [
             {
                 "account_id": "FOXFORD_ACCOUNT_ID",
-                "created_at": "2018-05-30T08:40:00",
+                "created_at": "2018-05-30T08:40:00Z",
                 "enabled": true,
                 "id": "FOXFORD_NAMESPACE_ID",
                 "label": "foxford.ru"
@@ -95,7 +95,7 @@ mod with_client {
             "result": [
                 {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": true,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "foxford.ru"

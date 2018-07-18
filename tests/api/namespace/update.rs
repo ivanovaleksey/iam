@@ -61,7 +61,7 @@ mod with_existing_record {
                 "jsonrpc": "2.0",
                 "result": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": true,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "stoege.ru"
@@ -102,7 +102,7 @@ mod with_existing_record {
                 "jsonrpc": "2.0",
                 "result": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": false,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "foxford.ru"
@@ -148,7 +148,7 @@ mod with_existing_record {
                 "jsonrpc": "2.0",
                 "result": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": true,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "foxford.ru"
@@ -193,7 +193,7 @@ mod with_existing_record {
                 "jsonrpc": "2.0",
                 "result": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": true,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "stoege.ru"
@@ -234,7 +234,7 @@ mod with_existing_record {
                 "jsonrpc": "2.0",
                 "result": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": false,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "foxford.ru"
@@ -280,7 +280,7 @@ mod with_existing_record {
                 "jsonrpc": "2.0",
                 "result": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00",
+                    "created_at": "2018-05-30T08:40:00Z",
                     "enabled": true,
                     "id": "FOXFORD_NAMESPACE_ID",
                     "label": "foxford.ru"

@@ -26,7 +26,7 @@ lazy_static! {
             "jsonrpc": "2.0",
             "result": {
                 "account_id": "USER_ACCOUNT_ID_1",
-                "created_at": "2018-06-02T08:40:00",
+                "created_at": "2018-06-02T08:40:00Z",
                 "label": "oauth2",
                 "provider": "FOXFORD_NAMESPACE_ID",
                 "uid": "FOXFORD_USER_ID_1"

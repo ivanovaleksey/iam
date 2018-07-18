@@ -12,7 +12,7 @@ table! {
         label -> Text,
         uid -> Text,
         account_id -> Uuid,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
@@ -22,7 +22,7 @@ table! {
         label -> Text,
         account_id -> Uuid,
         enabled -> Bool,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
@@ -31,7 +31,7 @@ table! {
         account_id -> Uuid,
         algorithm -> Text,
         keys -> Array<Bytea>,
-        issued_at -> Timestamp,
+        issued_at -> Timestamptz,
     }
 }
 
