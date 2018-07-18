@@ -1,3 +1,4 @@
+use futures::Future;
 use jsonrpc::BoxFuture;
 
 use rpc;
@@ -20,6 +21,6 @@ impl Rpc for RpcImpl {
     type Metadata = rpc::Meta;
 
     fn read(&self, meta: rpc::Meta, req: read::Request) -> BoxFuture<read::Response> {
-        Box::new(read::call(meta, req))
+        Box::new(read::call(meta, req).from_err())
     }
 }

@@ -1,7 +1,6 @@
 use abac::types::AbacAttribute;
 use diesel;
 use futures::future::{self, Future};
-use jsonrpc;
 
 use actors::db::{authz::Authz, namespace};
 use rpc;
@@ -10,7 +9,7 @@ use settings;
 pub type Request = rpc::namespace::read::Request;
 pub type Response = rpc::namespace::read::Response;
 
-pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
     let subject = rpc::forbid_anonymous(meta.subject);
     future::result(subject)
         .and_then({
@@ -91,5 +90,4 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 })
             }
         })
-        .from_err()
 }

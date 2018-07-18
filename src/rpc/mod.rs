@@ -14,6 +14,7 @@ use rpc::abac_policy::Rpc as AbacPolicyRpc;
 use rpc::abac_subject_attr::Rpc as AbacSubjectRpc;
 use rpc::account::Rpc as AccountRpc;
 use rpc::authz::Rpc as AuthRpc;
+pub use rpc::error::Error;
 use rpc::identity::Rpc as IdentityRpc;
 use rpc::namespace::Rpc as NamespaceRpc;
 use rpc::ping::Rpc as PingRpc;
@@ -155,14 +156,14 @@ where
     }
 }
 
-pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), error::Error> {
+pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), Error> {
     if res? {
         Ok(())
     } else {
-        Err(error::Error::Forbidden)
+        Err(Error::Forbidden)
     }
 }
 
-pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, error::Error> {
-    subject.ok_or_else(|| error::Error::Forbidden)
+pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, Error> {
+    subject.ok_or_else(|| Error::Forbidden)
 }
