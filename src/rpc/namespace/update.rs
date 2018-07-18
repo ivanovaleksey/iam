@@ -12,7 +12,6 @@ pub struct Request {
     pub id: Uuid,
     pub data: RequestData,
     pub label: Option<String>,
-    pub enabled: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -29,7 +28,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             let db = meta.db.clone().unwrap();
             let namespace_id = req.id;
             move |subject_id| {
-                let msg = namespace::find::Find::Any(namespace_id);
+                let msg = namespace::find::Find::Active(namespace_id);
                 db.send(msg).from_err().and_then(move |res| {
                     debug!("namespace find res: {:?}", res);
 
@@ -65,10 +64,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Update)],
                     };
 
-                    let f = db.send(msg)
-                        .from_err()
-                        .and_then(rpc::ensure_authorized)
-                        .and_then(|_| Ok(()));
+                    let f = db.send(msg).from_err().and_then(rpc::ensure_authorized);
 
                     Either::A(f)
                 } else {

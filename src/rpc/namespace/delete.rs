@@ -15,7 +15,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.clone().unwrap();
             move |subject_id| {
-                let msg = namespace::find::Find::from(req);
+                let msg = namespace::find::Find::Active(req.id);
                 db.send(msg).from_err().and_then(move |res| {
                     debug!("namespace find res: {:?}", res);
 

@@ -26,7 +26,7 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
     diesel::update(&netology_namespace)
-        .set(namespace::enabled.eq(false))
+        .set(namespace::deleted_at.eq(diesel::dsl::now))
         .execute(conn)
         .unwrap();
 

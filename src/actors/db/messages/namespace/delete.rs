@@ -36,7 +36,7 @@ fn delete_namespace(conn: &PgConnection, id: Uuid) -> QueryResult<Namespace> {
     conn.transaction::<_, _, _>(|| {
         let target = namespace::table.find(id);
         let record = diesel::update(target)
-            .set(namespace::enabled.eq(false))
+            .set(namespace::deleted_at.eq(diesel::dsl::now))
             .get_result(conn)?;
 
         delete_namespace_links(conn, &record)?;

@@ -4,13 +4,12 @@ use uuid::Uuid;
 
 use actors::DbExecutor;
 use models::Namespace;
-use rpc::namespace::read;
 use schema::namespace;
 
 #[derive(Debug)]
 pub enum Find {
     Any(Uuid),
-    Enabled(Uuid),
+    Active(Uuid),
 }
 
 impl Message for Find {
@@ -24,14 +23,8 @@ impl Handler<Find> for DbExecutor {
         let conn = &self.0.get().unwrap();
         match msg {
             Find::Any(id) => find_any(conn, id),
-            Find::Enabled(id) => find_enabled(conn, id),
+            Find::Active(id) => find_enabled(conn, id),
         }
-    }
-}
-
-impl From<read::Request> for Find {
-    fn from(req: read::Request) -> Self {
-        Find::Enabled(req.id)
     }
 }
 
@@ -41,7 +34,7 @@ fn find_any(conn: &PgConnection, id: Uuid) -> QueryResult<Namespace> {
 
 fn find_enabled(conn: &PgConnection, id: Uuid) -> QueryResult<Namespace> {
     namespace::table
-        .filter(namespace::enabled.eq(true))
+        .filter(namespace::deleted_at.is_null())
         .find(id)
         .get_result(conn)
 }

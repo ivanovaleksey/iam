@@ -21,7 +21,7 @@ table! {
         id -> Uuid,
         label -> Text,
         account_id -> Uuid,
-        enabled -> Bool,
+        deleted_at -> Nullable<Timestamptz>,
         created_at -> Timestamptz,
     }
 }

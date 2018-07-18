@@ -34,7 +34,6 @@ impl From<Request> for NewNamespace {
         NewNamespace {
             label: data.label,
             account_id: data.account_id,
-            enabled: true,
         }
     }
 }

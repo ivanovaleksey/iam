@@ -2,7 +2,7 @@ create table namespace (
   id uuid default uuid_generate_v4(),
   label text not null,
   account_id uuid not null,
-  enabled boolean not null default false,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
 
   unique(label),

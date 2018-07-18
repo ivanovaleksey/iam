@@ -11,7 +11,7 @@ pub struct Namespace {
     pub id: Uuid,
     pub label: String,
     pub account_id: Uuid,
-    pub enabled: bool,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -20,5 +20,4 @@ pub struct Namespace {
 pub struct NewNamespace {
     pub label: String,
     pub account_id: Uuid,
-    pub enabled: bool,
 }

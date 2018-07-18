@@ -5,7 +5,10 @@ use iam::models::{Account, Namespace};
 use iam::schema::namespace;
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
-use shared::{self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID};
+use shared::{
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID,
+    NETOLOGY_ACCOUNT_ID,
+};
 
 lazy_static! {
     static ref EXPECTED: String = {
@@ -43,7 +46,7 @@ fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
     (iam_account, iam_namespace)
 }
 
-mod with_enabled_namespace {
+mod with_active_record {
     use super::*;
     use actix_web::HttpMessage;
 
@@ -77,14 +80,14 @@ mod with_enabled_namespace {
 
         {
             let conn = get_conn!(pool);
-            assert!(!find_record(&conn).enabled);
+            assert!(find_record(&conn).unwrap().deleted_at.is_some());
 
             assert_eq!(namespace_objects_count(&conn), Ok(0));
         }
     }
 
     #[test]
-    fn client_can_delete_namespace() {
+    fn client_can_delete_own_namespace() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -103,9 +106,35 @@ mod with_enabled_namespace {
 
         {
             let conn = get_conn!(pool);
-            assert!(!find_record(&conn).enabled);
+            assert!(find_record(&conn).unwrap().deleted_at.is_some());
 
             assert_eq!(namespace_objects_count(&conn), Ok(0));
+        }
+    }
+
+    #[test]
+    fn client_cannot_delete_alien_namespace() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*NETOLOGY_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            assert!(find_record(&conn).unwrap().deleted_at.is_none());
+
+            assert_eq!(namespace_objects_count(&conn), Ok(2));
         }
     }
 
@@ -126,14 +155,14 @@ mod with_enabled_namespace {
 
         {
             let conn = get_conn!(pool);
-            assert!(find_record(&conn).enabled);
+            assert!(find_record(&conn).unwrap().deleted_at.is_none());
 
             assert_eq!(namespace_objects_count(&conn), Ok(2));
         }
     }
 }
 
-mod with_disabled_namespace {
+mod with_deleted_record {
     use super::*;
     use actix_web::HttpMessage;
 
@@ -145,7 +174,7 @@ mod with_disabled_namespace {
         let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
         diesel::update(&foxford_namespace)
-            .set(namespace::enabled.eq(false))
+            .set(namespace::deleted_at.eq(diesel::dsl::now))
             .execute(conn)
             .unwrap();
 
@@ -172,7 +201,7 @@ mod with_disabled_namespace {
 
         {
             let conn = get_conn!(pool);
-            assert!(!find_record(&conn).enabled);
+            assert!(find_record(&conn).is_ok());
         }
     }
 
@@ -196,7 +225,7 @@ mod with_disabled_namespace {
 
         {
             let conn = get_conn!(pool);
-            assert!(!find_record(&conn).enabled);
+            assert!(find_record(&conn).is_ok());
         }
     }
 
@@ -217,7 +246,7 @@ mod with_disabled_namespace {
 
         {
             let conn = get_conn!(pool);
-            assert!(!find_record(&conn).enabled);
+            assert!(find_record(&conn).is_ok());
         }
     }
 }
@@ -297,11 +326,10 @@ fn build_request() -> serde_json::Value {
     })
 }
 
-fn find_record(conn: &PgConnection) -> Namespace {
+fn find_record(conn: &PgConnection) -> QueryResult<Namespace> {
     namespace::table
         .find(*FOXFORD_NAMESPACE_ID)
         .get_result(conn)
-        .unwrap()
 }
 
 fn namespace_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {

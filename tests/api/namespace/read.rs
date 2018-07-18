@@ -43,7 +43,7 @@ fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
     (iam_account, iam_namespace)
 }
 
-mod with_enabled_namespace {
+mod with_active_record {
     use super::*;
     use actix_web::HttpMessage;
 
@@ -112,7 +112,7 @@ mod with_enabled_namespace {
     }
 }
 
-mod with_disabled_namespace {
+mod with_deleted_record {
     use super::*;
     use actix_web::HttpMessage;
 
@@ -124,7 +124,7 @@ mod with_disabled_namespace {
         let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
 
         diesel::update(&foxford_namespace)
-            .set(namespace::enabled.eq(false))
+            .set(namespace::deleted_at.eq(diesel::dsl::now))
             .execute(conn)
             .unwrap();
 

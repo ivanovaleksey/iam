@@ -175,7 +175,6 @@ fn build_record() -> NewNamespace {
     NewNamespace {
         label: "foxford.ru".to_owned(),
         account_id: *FOXFORD_ACCOUNT_ID,
-        enabled: true,
     }
 }
 
@@ -184,6 +183,6 @@ fn find_record(conn: &PgConnection) -> diesel::QueryResult<usize> {
     namespace::table
         .filter(namespace::label.eq(namespace.label))
         .filter(namespace::account_id.eq(namespace.account_id))
-        .filter(namespace::enabled.eq(namespace.enabled))
+        .filter(namespace::deleted_at.is_null())
         .execute(conn)
 }

@@ -79,7 +79,6 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
             namespace::id.eq(id),
             namespace::label.eq(label),
             namespace::account_id.eq(account_id),
-            namespace::enabled.eq(true),
             namespace::created_at.eq(NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 0)),
         ))
         .get_result::<Namespace>(conn)

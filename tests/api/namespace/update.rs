@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+use diesel::{self, prelude::*};
 use serde_json;
 
 use iam::models::{Account, Namespace};
@@ -23,7 +23,7 @@ fn before_each_1(conn: &PgConnection) -> (Account, Namespace) {
     (iam_account, iam_namespace)
 }
 
-mod with_existing_record {
+mod with_active_record {
     use super::*;
     use actix_web::HttpMessage;
 
@@ -37,124 +37,112 @@ mod with_existing_record {
         foxford_namespace
     }
 
-    mod with_admin {
-        use super::*;
+    #[test]
+    fn admin_can_update_label() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-        #[test]
-        fn can_update_label() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let changeset = build_request("foxford-new.ru");
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*IAM_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let template = r#"{
-                "jsonrpc": "2.0",
-                "result": {
-                    "data": {
-                        "account_id": "FOXFORD_ACCOUNT_ID",
-                        "created_at": "2018-05-30T08:40:00Z",
-                        "label": "foxford-new.ru"
-                    },
-                    "id": "FOXFORD_NAMESPACE_ID"
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&changeset).unwrap(),
+            Some(*IAM_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let template = r#"{
+            "jsonrpc": "2.0",
+            "result": {
+                "data": {
+                    "account_id": "FOXFORD_ACCOUNT_ID",
+                    "created_at": "2018-05-30T08:40:00Z",
+                    "label": "foxford-new.ru"
                 },
-                "id": "qwerty"
-            }"#;
+                "id": "FOXFORD_NAMESPACE_ID"
+            },
+            "id": "qwerty"
+        }"#;
 
-            let json = template
-                .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+        let json = template
+            .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
 
-            assert_eq!(body, shared::strip_json(&json));
+        assert_eq!(body, shared::strip_json(&json));
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn).label, "foxford-new.ru");
-            }
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford-new.ru");
         }
     }
 
-    mod with_own_client {
-        use super::*;
+    #[test]
+    fn client_can_update_own_namespace_label() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-        #[test]
-        fn can_update_label() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let changeset = build_request("foxford-new.ru");
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let template = r#"{
-                "jsonrpc": "2.0",
-                "result": {
-                    "data": {
-                        "account_id": "FOXFORD_ACCOUNT_ID",
-                        "created_at": "2018-05-30T08:40:00Z",
-                        "label": "foxford-new.ru"
-                    },
-                    "id": "FOXFORD_NAMESPACE_ID"
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&changeset).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let template = r#"{
+            "jsonrpc": "2.0",
+            "result": {
+                "data": {
+                    "account_id": "FOXFORD_ACCOUNT_ID",
+                    "created_at": "2018-05-30T08:40:00Z",
+                    "label": "foxford-new.ru"
                 },
-                "id": "qwerty"
-            }"#;
+                "id": "FOXFORD_NAMESPACE_ID"
+            },
+            "id": "qwerty"
+        }"#;
 
-            let json = template
-                .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+        let json = template
+            .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
 
-            assert_eq!(body, shared::strip_json(&json));
+        assert_eq!(body, shared::strip_json(&json));
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn).label, "foxford-new.ru");
-            }
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford-new.ru");
         }
     }
 
-    mod with_alien_client {
-        use super::*;
+    #[test]
+    fn client_cannot_update_alien_namespace_label() {
+        let shared::Server { mut srv, pool } = shared::build_server();
 
-        #[test]
-        fn cannot_update_label() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&changeset).unwrap(),
+            Some(*NETOLOGY_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
 
-            let changeset = build_request("foxford-new.ru");
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn).label, "foxford.ru");
-            }
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
         }
     }
 
@@ -173,8 +161,126 @@ mod with_existing_record {
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
 
-        let conn = get_conn!(pool);
-        assert_eq!(find_record(&conn).label, "foxford.ru");
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
+    }
+}
+
+mod with_deleted_record {
+    use super::*;
+    use actix_web::HttpMessage;
+
+    #[must_use]
+    fn before_each_2(conn: &PgConnection) -> Namespace {
+        let _ = before_each_1(conn);
+
+        let foxford_account = create_account(conn, AccountKind::Foxford);
+        let foxford_namespace = create_namespace(conn, NamespaceKind::Foxford(foxford_account.id));
+
+        diesel::update(&foxford_namespace)
+            .set(namespace::deleted_at.eq(diesel::dsl::now))
+            .execute(conn)
+            .unwrap();
+
+        foxford_namespace
+    }
+
+    #[test]
+    fn client_cannot_update_own_namespace_label() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&changeset).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
+    }
+
+    #[test]
+    fn admin_cannot_update_label() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&changeset).unwrap(),
+            Some(*IAM_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::NOT_FOUND);
+
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
+    }
+
+    #[test]
+    fn client_cannot_update_alien_namespace_label() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&changeset).unwrap(),
+            Some(*NETOLOGY_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
+    }
+
+    #[test]
+    fn anonymous_cannot_update_namespace() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let changeset = build_request("foxford-new.ru");
+        let req = shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            assert_eq!(find_record(&conn).label, "foxford.ru");
+        }
     }
 }
 

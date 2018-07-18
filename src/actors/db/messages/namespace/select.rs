@@ -19,17 +19,17 @@ impl Handler<Select> for DbExecutor {
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
+        call(conn, &msg.ids)
     }
 }
 
-fn call(conn: &PgConnection, msg: Select) -> QueryResult<Vec<Namespace>> {
+fn call(conn: &PgConnection, ids: &[Uuid]) -> QueryResult<Vec<Namespace>> {
     use diesel::dsl::any;
-    use schema::namespace::dsl::*;
+    use schema::namespace;
 
-    let query = namespace
-        .filter(enabled.eq(true))
-        .filter(id.eq(any(msg.ids)));
+    let query = namespace::table
+        .filter(namespace::deleted_at.is_null())
+        .filter(namespace::id.eq(any(ids)));
 
     let items = query.load(conn)?;
 
