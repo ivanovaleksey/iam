@@ -44,6 +44,6 @@ impl Rpc for RpcImpl {
     }
 
     fn list(&self, meta: rpc::Meta, req: list::Request) -> BoxFuture<list::Response> {
-        Box::new(list::call(meta, req))
+        Box::new(list::call(meta, &req))
     }
 }

@@ -53,6 +53,6 @@ impl Rpc for RpcImpl {
     }
 
     fn list(&self, meta: rpc::Meta, req: list::Request) -> BoxFuture<list::Response> {
-        Box::new(list::call(meta, req).from_err())
+        Box::new(list::call(meta, &req).from_err())
     }
 }

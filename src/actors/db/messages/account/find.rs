@@ -20,7 +20,7 @@ impl Handler<Find> for DbExecutor {
 
     fn handle(&mut self, msg: Find, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
+        call(conn, msg.id)
     }
 }
 
@@ -30,10 +30,8 @@ impl From<read::Request> for Find {
     }
 }
 
-fn call(conn: &PgConnection, msg: Find) -> QueryResult<Account> {
-    use schema::account::dsl::*;
+fn call(conn: &PgConnection, id: Uuid) -> QueryResult<Account> {
+    use schema::account;
 
-    let object = account.find(msg.id).get_result(conn)?;
-
-    Ok(object)
+    account::table.find(id).get_result(conn)
 }

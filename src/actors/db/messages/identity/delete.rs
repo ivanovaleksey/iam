@@ -20,13 +20,13 @@ impl Handler<Delete> for DbExecutor {
     fn handle(&mut self, msg: Delete, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
         match msg {
-            Delete::Identity(pk) => delete_identity(conn, pk),
-            Delete::IdentityWithAccount(pk) => delete_identity_with_account(conn, pk),
+            Delete::Identity(ref pk) => delete_identity(conn, pk),
+            Delete::IdentityWithAccount(ref pk) => delete_identity_with_account(conn, pk),
         }
     }
 }
 
-fn delete_identity(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
+fn delete_identity(conn: &PgConnection, pk: &PrimaryKey) -> QueryResult<Identity> {
     use schema::identity;
 
     conn.transaction::<_, _, _>(|| {
@@ -39,11 +39,11 @@ fn delete_identity(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity>
     })
 }
 
-fn delete_identity_with_account(conn: &PgConnection, pk: PrimaryKey) -> QueryResult<Identity> {
+fn delete_identity_with_account(conn: &PgConnection, pk: &PrimaryKey) -> QueryResult<Identity> {
     use actors::db::account;
 
     conn.transaction::<_, _, _>(|| {
-        let identity = delete_identity(conn, pk)?;
+        let identity = delete_identity(conn, &pk)?;
 
         account::delete::delete(conn, identity.account_id)?;
 

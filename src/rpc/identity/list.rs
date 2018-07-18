@@ -21,7 +21,7 @@ pub struct Filter {
 
 pub type Response = rpc::ListResponse<rpc::identity::read::Response>;
 
-pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+pub fn call(meta: rpc::Meta, req: &Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
     use abac_attribute::{CollectionKind, OperationKind, UriKind};
 
     let iam_namespace_id = settings::iam_namespace_id();

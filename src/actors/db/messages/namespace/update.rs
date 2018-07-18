@@ -24,7 +24,7 @@ impl Handler<Update> for DbExecutor {
 
     fn handle(&mut self, msg: Update, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
+        call(conn, &msg)
     }
 }
 
@@ -38,8 +38,6 @@ impl From<update::Request> for Update {
     }
 }
 
-fn call(conn: &PgConnection, msg: Update) -> QueryResult<Namespace> {
-    let object = msg.save_changes(conn)?;
-
-    Ok(object)
+fn call(conn: &PgConnection, msg: &Update) -> QueryResult<Namespace> {
+    msg.save_changes(conn)
 }

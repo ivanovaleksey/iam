@@ -19,7 +19,7 @@ pub struct Filter {
 
 pub type Response = rpc::ListResponse<rpc::namespace::read::Response>;
 
-pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
+pub fn call(meta: rpc::Meta, req: &Request) -> impl Future<Item = Response, Error = jsonrpc::Error> {
     use abac_attribute::{CollectionKind, OperationKind, UriKind};
 
     let account_id = req.filter.account_id;
