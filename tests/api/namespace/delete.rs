@@ -12,11 +12,12 @@ lazy_static! {
         let template = r#"{
             "jsonrpc": "2.0",
             "result": {
-                "account_id": "FOXFORD_ACCOUNT_ID",
-                "created_at": "2018-05-30T08:40:00Z",
-                "enabled": false,
-                "id": "FOXFORD_NAMESPACE_ID",
-                "label": "foxford.ru"
+                "data": {
+                    "account_id": "FOXFORD_ACCOUNT_ID",
+                    "created_at": "2018-05-30T08:40:00Z",
+                    "label": "foxford.ru"
+                },
+                "id": "FOXFORD_NAMESPACE_ID"
             },
             "id": "qwerty"
         }"#;
