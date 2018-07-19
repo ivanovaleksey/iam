@@ -8,13 +8,7 @@ use schema::account;
 #[table_name = "account"]
 pub struct Account {
     pub id: Uuid,
-    pub enabled: bool,
     pub constraints: Value,
+    pub disabled_at: Option<DateTime<Utc>>,
     pub deleted_at: Option<DateTime<Utc>>,
-}
-
-#[derive(AsChangeset, Insertable, Debug)]
-#[table_name = "account"]
-pub struct NewAccount {
-    pub enabled: bool,
 }

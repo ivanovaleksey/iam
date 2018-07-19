@@ -3,6 +3,7 @@ use diesel;
 use futures::future::{self, Either, Future};
 
 use actors::db::{authz::Authz, identity};
+use models::identity::Identity;
 use models::identity::PrimaryKey;
 use rpc;
 use settings;
@@ -18,28 +19,28 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.clone().unwrap();
             move |subject_id| {
-                let msg = identity::find::Find(req.id);
+                let msg = identity::find::FindWithAccount(req.id);
                 db.send(msg).from_err().and_then(move |res| {
                     debug!("identity find res: {:?}", res);
 
-                    let identity = match res {
-                        Ok(identity) => Ok(Some(identity)),
+                    let pair = match res {
+                        Ok((identity, account)) => Ok(Some((identity, account))),
                         Err(diesel::result::Error::NotFound) => Ok(None),
                         Err(e) => Err(e),
                     }?;
 
-                    Ok((identity, subject_id))
+                    Ok((pair, subject_id))
                 })
             }
         })
         .and_then({
             let db = meta.db.clone().unwrap();
-            move |(identity, subject_id)| {
+            move |(pair, subject_id)| {
                 use abac_attribute::{CollectionKind, OperationKind, UriKind};
 
                 let iam_namespace_id = settings::iam_namespace_id();
 
-                if let Some(identity) = identity {
+                if let Some((identity, account)) = pair {
                     let pk = PrimaryKey::from(identity.clone());
 
                     let msg = Authz {
@@ -58,7 +59,13 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     let f = db.send(msg)
                         .from_err()
                         .and_then(rpc::ensure_authorized)
-                        .and_then(|_| Ok(identity));
+                        .and_then(move |_| {
+                            if account.disabled_at.is_some() {
+                                Err(rpc::Error::Forbidden)
+                            } else {
+                                Ok(identity)
+                            }
+                        });
 
                     Either::A(f)
                 } else {

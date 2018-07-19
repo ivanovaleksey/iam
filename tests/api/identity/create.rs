@@ -84,7 +84,7 @@ mod with_client {
                     .get_result::<Account>(&conn)
                     .unwrap();
 
-                assert!(created_account.enabled);
+                assert!(created_account.disabled_at.is_none());
             }
 
             let req_json = json!({
@@ -206,7 +206,7 @@ mod with_client {
             let _ = before_each_1(&conn);
 
             let user_account = diesel::insert_into(account::table)
-                .values((account::id.eq(Uuid::new_v4()), account::enabled.eq(true)))
+                .values(account::id.eq(Uuid::new_v4()))
                 .get_result::<Account>(&conn)
                 .unwrap();
 
