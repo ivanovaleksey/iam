@@ -1,4 +1,4 @@
-use diesel::{self, prelude::*};
+use diesel::prelude::*;
 use serde_json;
 
 use iam::models::{Account, Namespace};
@@ -49,7 +49,7 @@ mod with_existing_record {
                 let _ = before_each_2(&conn);
             }
 
-            let changeset = build_request(Some("stoege.ru"), None);
+            let changeset = build_request("foxford-new.ru");
             let req = shared::build_auth_request(
                 &srv,
                 serde_json::to_string(&changeset).unwrap(),
@@ -60,11 +60,12 @@ mod with_existing_record {
             let template = r#"{
                 "jsonrpc": "2.0",
                 "result": {
-                    "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
-                    "enabled": true,
-                    "id": "FOXFORD_NAMESPACE_ID",
-                    "label": "stoege.ru"
+                    "data": {
+                        "account_id": "FOXFORD_ACCOUNT_ID",
+                        "created_at": "2018-05-30T08:40:00Z",
+                        "label": "foxford-new.ru"
+                    },
+                    "id": "FOXFORD_NAMESPACE_ID"
                 },
                 "id": "qwerty"
             }"#;
@@ -77,94 +78,7 @@ mod with_existing_record {
 
             {
                 let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn).label, "stoege.ru");
-            }
-        }
-
-        #[test]
-        fn can_disable_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let changeset = build_request(None, Some(false));
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*IAM_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let template = r#"{
-                "jsonrpc": "2.0",
-                "result": {
-                    "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
-                    "enabled": false,
-                    "id": "FOXFORD_NAMESPACE_ID",
-                    "label": "foxford.ru"
-                },
-                "id": "qwerty"
-            }"#;
-
-            let json = template
-                .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
-
-            assert_eq!(body, shared::strip_json(&json));
-
-            {
-                let conn = get_conn!(pool);
-                assert!(!find_record(&conn).enabled);
-            }
-        }
-
-        #[test]
-        fn can_enable_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let namespace = before_each_2(&conn);
-
-                diesel::update(&namespace)
-                    .set(namespace::enabled.eq(false))
-                    .execute(&conn)
-                    .unwrap();
-            }
-
-            let changeset = build_request(None, Some(true));
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*IAM_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let template = r#"{
-                "jsonrpc": "2.0",
-                "result": {
-                    "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
-                    "enabled": true,
-                    "id": "FOXFORD_NAMESPACE_ID",
-                    "label": "foxford.ru"
-                },
-                "id": "qwerty"
-            }"#;
-
-            let json = template
-                .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
-
-            assert_eq!(body, shared::strip_json(&json));
-
-            {
-                let conn = get_conn!(pool);
-                assert!(find_record(&conn).enabled);
+                assert_eq!(find_record(&conn).label, "foxford-new.ru");
             }
         }
     }
@@ -181,7 +95,7 @@ mod with_existing_record {
                 let _ = before_each_2(&conn);
             }
 
-            let changeset = build_request(Some("stoege.ru"), None);
+            let changeset = build_request("foxford-new.ru");
             let req = shared::build_auth_request(
                 &srv,
                 serde_json::to_string(&changeset).unwrap(),
@@ -192,11 +106,12 @@ mod with_existing_record {
             let template = r#"{
                 "jsonrpc": "2.0",
                 "result": {
-                    "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
-                    "enabled": true,
-                    "id": "FOXFORD_NAMESPACE_ID",
-                    "label": "stoege.ru"
+                    "data": {
+                        "account_id": "FOXFORD_ACCOUNT_ID",
+                        "created_at": "2018-05-30T08:40:00Z",
+                        "label": "foxford-new.ru"
+                    },
+                    "id": "FOXFORD_NAMESPACE_ID"
                 },
                 "id": "qwerty"
             }"#;
@@ -209,94 +124,7 @@ mod with_existing_record {
 
             {
                 let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn).label, "stoege.ru");
-            }
-        }
-
-        #[test]
-        fn can_disable_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let changeset = build_request(None, Some(false));
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let template = r#"{
-                "jsonrpc": "2.0",
-                "result": {
-                    "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
-                    "enabled": false,
-                    "id": "FOXFORD_NAMESPACE_ID",
-                    "label": "foxford.ru"
-                },
-                "id": "qwerty"
-            }"#;
-
-            let json = template
-                .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
-
-            assert_eq!(body, shared::strip_json(&json));
-
-            {
-                let conn = get_conn!(pool);
-                assert!(!find_record(&conn).enabled);
-            }
-        }
-
-        #[test]
-        fn can_enable_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let namespace = before_each_2(&conn);
-
-                diesel::update(&namespace)
-                    .set(namespace::enabled.eq(false))
-                    .execute(&conn)
-                    .unwrap();
-            }
-
-            let changeset = build_request(None, Some(true));
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            let template = r#"{
-                "jsonrpc": "2.0",
-                "result": {
-                    "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
-                    "enabled": true,
-                    "id": "FOXFORD_NAMESPACE_ID",
-                    "label": "foxford.ru"
-                },
-                "id": "qwerty"
-            }"#;
-
-            let json = template
-                .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
-                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
-
-            assert_eq!(body, shared::strip_json(&json));
-
-            {
-                let conn = get_conn!(pool);
-                assert!(find_record(&conn).enabled);
+                assert_eq!(find_record(&conn).label, "foxford-new.ru");
             }
         }
     }
@@ -313,7 +141,7 @@ mod with_existing_record {
                 let _ = before_each_2(&conn);
             }
 
-            let changeset = build_request(Some("stoege.ru"), None);
+            let changeset = build_request("foxford-new.ru");
             let req = shared::build_auth_request(
                 &srv,
                 serde_json::to_string(&changeset).unwrap(),
@@ -328,61 +156,6 @@ mod with_existing_record {
                 assert_eq!(find_record(&conn).label, "foxford.ru");
             }
         }
-
-        #[test]
-        fn cannot_disable_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
-
-            let changeset = build_request(None, Some(false));
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-
-            {
-                let conn = get_conn!(pool);
-                assert!(find_record(&conn).enabled);
-            }
-        }
-
-        #[test]
-        fn cannot_enable_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
-
-            {
-                let conn = get_conn!(pool);
-                let namespace = before_each_2(&conn);
-
-                diesel::update(&namespace)
-                    .set(namespace::enabled.eq(false))
-                    .execute(&conn)
-                    .unwrap();
-            }
-
-            let changeset = build_request(None, Some(true));
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&changeset).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
-
-            {
-                let conn = get_conn!(pool);
-                assert!(!find_record(&conn).enabled);
-            }
-        }
     }
 
     #[test]
@@ -394,7 +167,7 @@ mod with_existing_record {
             let _ = before_each_2(&conn);
         }
 
-        let changeset = build_request(Some("stoege.ru"), None);
+        let changeset = build_request("foxford-new.ru");
         let req = shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
@@ -423,7 +196,7 @@ mod without_existing_record {
             let _ = before_each_2(&conn);
         }
 
-        let changeset = build_request(Some("stoege.ru"), None);
+        let changeset = build_request("foxford-new.ru");
         let req = shared::build_auth_request(
             &srv,
             serde_json::to_string(&changeset).unwrap(),
@@ -443,7 +216,7 @@ mod without_existing_record {
             let _ = before_each_2(&conn);
         }
 
-        let changeset = build_request(Some("stoege.ru"), None);
+        let changeset = build_request("foxford-new.ru");
         let req = shared::build_auth_request(
             &srv,
             serde_json::to_string(&changeset).unwrap(),
@@ -463,7 +236,7 @@ mod without_existing_record {
             let _ = before_each_2(&conn);
         }
 
-        let changeset = build_request(Some("stoege.ru"), None);
+        let changeset = build_request("foxford-new.ru");
         let req = shared::build_anonymous_request(&srv, serde_json::to_string(&changeset).unwrap());
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
@@ -471,21 +244,16 @@ mod without_existing_record {
     }
 }
 
-fn build_request(label: Option<&str>, enabled: Option<bool>) -> serde_json::Value {
-    let mut payload = json!({
-        "id": *FOXFORD_NAMESPACE_ID
-    });
-    if let Some(label) = label {
-        payload["label"] = serde_json::Value::String(label.to_owned());
-    }
-    if let Some(enabled) = enabled {
-        payload["enabled"] = serde_json::Value::Bool(enabled);
-    }
-
+fn build_request(label: &str) -> serde_json::Value {
     json!({
         "jsonrpc": "2.0",
         "method": "namespace.update",
-        "params": [payload],
+        "params": [{
+            "id": *FOXFORD_NAMESPACE_ID,
+            "data": {
+                "label": label
+            },
+        }],
         "id": "qwerty"
     })
 }

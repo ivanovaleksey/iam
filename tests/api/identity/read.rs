@@ -18,11 +18,15 @@ lazy_static! {
         let template = r#"{
             "jsonrpc": "2.0",
             "result": {
-                "account_id": "USER_ACCOUNT_ID_1",
-                "created_at": "2018-06-02T08:40:00Z",
-                "label": "oauth2",
-                "provider": "FOXFORD_NAMESPACE_ID",
-                "uid": "FOXFORD_USER_ID"
+                "data": {
+                    "account_id": "USER_ACCOUNT_ID_1",
+                    "created_at": "2018-06-02T08:40:00Z"
+                },
+                "id": {
+                    "label": "oauth2",
+                    "provider": "FOXFORD_NAMESPACE_ID",
+                    "uid": "FOXFORD_USER_ID"
+                }
             },
             "id": "qwerty"
         }"#;
@@ -240,9 +244,11 @@ fn build_request() -> serde_json::Value {
         "jsonrpc": "2.0",
         "method": "identity.read",
         "params": [{
-            "provider": *FOXFORD_NAMESPACE_ID,
-            "label": "oauth2",
-            "uid": *FOXFORD_USER_ID,
+            "id": {
+                "provider": *FOXFORD_NAMESPACE_ID,
+                "label": "oauth2",
+                "uid": *FOXFORD_USER_ID,
+            }
         }],
         "id": "qwerty"
     })

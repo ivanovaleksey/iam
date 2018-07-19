@@ -80,6 +80,12 @@ pub fn build_server() -> Server {
     io
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Response<Id, Data> {
+    pub id: Id,
+    pub data: Data,
+}
+
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ListRequest<F>

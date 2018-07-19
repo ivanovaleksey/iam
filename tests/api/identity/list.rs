@@ -68,25 +68,37 @@ mod with_admin {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 },
                 {
-                    "account_id": "USER_ACCOUNT_ID_2",
-                    "created_at": "2018-06-02T08:40:02Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_2_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_2",
+                        "created_at": "2018-06-02T08:40:02Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_2_ID"
+                    }
                 },
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:03Z",
-                    "label": "oauth2",
-                    "provider": "NETOLOGY_NAMESPACE_ID",
-                    "uid": "NETOLOGY_USER_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:03Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "NETOLOGY_NAMESPACE_ID",
+                        "uid": "NETOLOGY_USER_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -123,18 +135,26 @@ mod with_admin {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 },
                 {
-                    "account_id": "USER_ACCOUNT_ID_2",
-                    "created_at": "2018-06-02T08:40:02Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_2_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_2",
+                        "created_at": "2018-06-02T08:40:02Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_2_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -169,11 +189,15 @@ mod with_admin {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -206,11 +230,15 @@ mod with_admin {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_2",
-                    "created_at": "2018-06-02T08:40:02Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_2_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_2",
+                        "created_at": "2018-06-02T08:40:02Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_2_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -267,18 +295,26 @@ mod with_client {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 },
                 {
-                    "account_id": "USER_ACCOUNT_ID_2",
-                    "created_at": "2018-06-02T08:40:02Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_2_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_2",
+                        "created_at": "2018-06-02T08:40:02Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_2_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -333,11 +369,15 @@ mod with_client {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -434,11 +474,15 @@ mod with_user {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -471,18 +515,26 @@ mod with_user {
             "jsonrpc": "2.0",
             "result": [
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:01Z",
-                    "label": "oauth2",
-                    "provider": "FOXFORD_NAMESPACE_ID",
-                    "uid": "FOXFORD_USER_1_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:01Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "FOXFORD_NAMESPACE_ID",
+                        "uid": "FOXFORD_USER_1_ID"
+                    }
                 },
                 {
-                    "account_id": "USER_ACCOUNT_ID_1",
-                    "created_at": "2018-06-02T08:40:03Z",
-                    "label": "oauth2",
-                    "provider": "NETOLOGY_NAMESPACE_ID",
-                    "uid": "NETOLOGY_USER_ID"
+                    "data": {
+                        "account_id": "USER_ACCOUNT_ID_1",
+                        "created_at": "2018-06-02T08:40:03Z"
+                    },
+                    "id": {
+                        "label": "oauth2",
+                        "provider": "NETOLOGY_NAMESPACE_ID",
+                        "uid": "NETOLOGY_USER_ID"
+                    }
                 }
             ],
             "id": "qwerty"

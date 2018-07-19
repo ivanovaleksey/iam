@@ -10,11 +10,17 @@ use settings;
 #[derive(Debug, Deserialize)]
 pub struct Request {
     pub id: Uuid,
+    pub data: RequestData,
     pub label: Option<String>,
     pub enabled: Option<bool>,
 }
 
-pub type Response = rpc::namespace::create::Response;
+#[derive(Debug, Deserialize)]
+pub struct RequestData {
+    pub label: String,
+}
+
+pub type Response = rpc::namespace::read::Response;
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
     let subject = rpc::forbid_anonymous(meta.subject);
@@ -91,7 +97,10 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.unwrap();
             move |_| {
-                let msg = namespace::update::Update::from(req);
+                let msg = namespace::update::Update {
+                    id: req.id,
+                    label: req.data.label,
+                };
                 db.send(msg).from_err().and_then(|res| {
                     debug!("namespace update res: {:?}", res);
                     Ok(Response::from(res?))

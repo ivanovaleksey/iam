@@ -9,30 +9,31 @@ use models::{identity::PrimaryKey, Identity};
 use rpc;
 use settings;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Request {
-    pub provider: Uuid,
-    pub label: String,
-    pub uid: String,
+    pub id: PrimaryKey,
 }
 
-#[derive(Debug, Serialize)]
-pub struct Response {
-    provider: Uuid,
-    label: String,
-    uid: String,
-    account_id: Uuid,
-    created_at: DateTime<Utc>,
+pub type Response = rpc::Response<PrimaryKey, ResponseData>;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseData {
+    pub account_id: Uuid,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<Identity> for Response {
     fn from(identity: Identity) -> Self {
         Response {
-            provider: identity.provider,
-            label: identity.label,
-            uid: identity.uid,
-            account_id: identity.account_id,
-            created_at: identity.created_at,
+            id: PrimaryKey {
+                provider: identity.provider,
+                label: identity.label,
+                uid: identity.uid,
+            },
+            data: ResponseData {
+                account_id: identity.account_id,
+                created_at: identity.created_at,
+            },
         }
     }
 }
@@ -42,7 +43,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
     future::result(subject)
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.provider;
+            let namespace_id = req.id.provider;
             move |subject_id| {
                 use abac_attribute::{CollectionKind, OperationKind, UriKind};
 
@@ -66,15 +67,10 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         })
         .and_then({
             let db = meta.db.clone().unwrap();
-            let req = req.clone();
+            let pk = req.id.clone();
 
             // Find existing identity by (provider, label, uid) triple.
             move |_| {
-                let pk = PrimaryKey {
-                    provider: req.provider,
-                    label: req.label,
-                    uid: req.uid,
-                };
                 let msg = identity::find::Find(pk);
 
                 db.send(msg).from_err().and_then(move |res| {
@@ -102,12 +98,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
 
             // Identity is not found. Create new account & linked identity.
             move |_| {
-                let pk = PrimaryKey {
-                    provider: req.provider,
-                    label: req.label,
-                    uid: req.uid,
-                };
-                let msg = identity::insert::Insert::IdentityWithAccount(pk);
+                let msg = identity::insert::Insert::IdentityWithAccount(req.id);
 
                 db.send(msg).from_err().and_then(|res| {
                     debug!("identity insert res: {:?}", res);

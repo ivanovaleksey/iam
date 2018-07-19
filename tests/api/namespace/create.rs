@@ -43,13 +43,15 @@ fn admin_can_create_namespace() {
     let body = srv.execute(resp.body()).unwrap();
 
     if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
-        let namespace: Namespace = serde_json::from_value(resp.result).unwrap();
+        use iam::rpc::namespace::create::Response;
+
+        let resp: Response = serde_json::from_value(resp.result).unwrap();
+        let namespace_id = resp.id;
 
         let expected = build_record();
-        assert_ne!(namespace.id, Uuid::nil());
-        assert_eq!(namespace.label, expected.label);
-        assert_eq!(namespace.account_id, expected.account_id);
-        assert_eq!(namespace.enabled, expected.enabled);
+        assert_ne!(namespace_id, Uuid::nil());
+        assert_eq!(resp.data.label, expected.label);
+        assert_eq!(resp.data.account_id, expected.account_id);
 
         {
             let conn = get_conn!(pool);
@@ -72,7 +74,7 @@ fn admin_can_create_namespace() {
                     {
                         "namespace_id": *IAM_NAMESPACE_ID,
                         "key": "uri",
-                        "value": format!("namespace/{}", namespace.id),
+                        "value": format!("namespace/{}", namespace_id),
                     }
                 ],
                 "action": [
@@ -159,7 +161,12 @@ fn build_request() -> serde_json::Value {
     json!({
         "jsonrpc": "2.0",
         "method": "namespace.create",
-        "params": [namespace],
+        "params": [{
+            "data": {
+                "account_id": namespace.account_id,
+                "label": namespace.label,
+            }
+        }],
         "id": "qwerty"
     })
 }

@@ -10,28 +10,44 @@ use settings;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
-    pub label: String,
-    pub account_id: Uuid,
-    pub enabled: bool,
+    pub data: RequestData,
 }
 
-#[derive(Debug, Serialize)]
-pub struct Response {
-    id: Uuid,
-    label: String,
-    account_id: Uuid,
-    enabled: bool,
-    created_at: DateTime<Utc>,
+#[derive(Debug, Deserialize)]
+pub struct RequestData {
+    pub label: String,
+    pub account_id: Uuid,
+}
+
+pub type Response = rpc::Response<Uuid, ResponseData>;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseData {
+    pub label: String,
+    pub account_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<Request> for NewNamespace {
+    fn from(msg: Request) -> Self {
+        let data = msg.data;
+        NewNamespace {
+            label: data.label,
+            account_id: data.account_id,
+            enabled: true,
+        }
+    }
 }
 
 impl From<Namespace> for Response {
     fn from(namespace: Namespace) -> Self {
         Response {
             id: namespace.id,
-            label: namespace.label,
-            account_id: namespace.account_id,
-            enabled: namespace.enabled,
-            created_at: namespace.created_at,
+            data: ResponseData {
+                label: namespace.label,
+                account_id: namespace.account_id,
+                created_at: namespace.created_at,
+            },
         }
     }
 }
