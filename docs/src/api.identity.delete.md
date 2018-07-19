@@ -2,8 +2,8 @@
 
 ### Description
 
-As mentioned in [Account API](api.account.html#description) deleting the last account identity results in deleting that account altogether.  
-So, deleting all account identities one by one is a common way to delete an account itself.
+As mentioned in [Account API](api.account.html#description) deleting the last account identity results in account being marked as _deleted_.  
+So, deleting all account identities one by one is a common way to mark an account as _deleted_.
 
 ### Method
 

@@ -3,6 +3,7 @@ table! {
         id -> Uuid,
         enabled -> Bool,
         constraints -> Jsonb,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -9,6 +10,7 @@ pub struct Account {
     pub id: Uuid,
     pub enabled: bool,
     pub constraints: Value,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(AsChangeset, Insertable, Debug)]

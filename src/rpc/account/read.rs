@@ -30,7 +30,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.clone().unwrap();
             move |subject_id| {
-                let msg = account::find::Find::from(req);
+                let msg = account::find::Find(req.id);
                 db.send(msg).from_err().and_then(move |res| {
                     debug!("account find res: {:?}", res);
 

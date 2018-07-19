@@ -9,7 +9,7 @@ use abac::types::AbacAttribute;
 
 use iam::abac_attribute::UriKind;
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
-use iam::schema::{account, identity};
+use iam::schema::identity;
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{
@@ -106,8 +106,8 @@ mod with_existing_record {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(0));
 
-                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-                assert_eq!(found, Ok(0));
+                let account = find_account(&conn).unwrap();
+                assert!(account.deleted_at.is_some());
 
                 assert_eq!(identity_objects_count(&conn), Ok(0));
                 assert_eq!(account_objects_count(&conn), Ok(0));
@@ -138,8 +138,8 @@ mod with_existing_record {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(0));
 
-                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-                assert_eq!(found, Ok(1));
+                let account = find_account(&conn).unwrap();
+                assert!(account.deleted_at.is_none());
 
                 assert_eq!(identity_objects_count(&conn), Ok(0));
                 assert_eq!(account_objects_count(&conn), Ok(2));
@@ -169,8 +169,8 @@ mod with_existing_record {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(1));
 
-                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-                assert_eq!(found, Ok(1));
+                let account = find_account(&conn).unwrap();
+                assert!(account.deleted_at.is_none());
 
                 assert_eq!(identity_objects_count(&conn), Ok(3));
                 assert_eq!(account_objects_count(&conn), Ok(2));
@@ -204,8 +204,8 @@ mod with_existing_record {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(0));
 
-                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-                assert_eq!(found, Ok(0));
+                let account = find_account(&conn).unwrap();
+                assert!(account.deleted_at.is_some());
 
                 assert_eq!(identity_objects_count(&conn), Ok(0));
                 assert_eq!(account_objects_count(&conn), Ok(0));
@@ -236,8 +236,8 @@ mod with_existing_record {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(0));
 
-                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-                assert_eq!(found, Ok(1));
+                let account = find_account(&conn).unwrap();
+                assert!(account.deleted_at.is_none());
 
                 assert_eq!(identity_objects_count(&conn), Ok(0));
                 assert_eq!(account_objects_count(&conn), Ok(2));
@@ -267,8 +267,8 @@ mod with_existing_record {
                 let conn = get_conn!(pool);
                 assert_eq!(find_record(&conn), Ok(1));
 
-                let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-                assert_eq!(found, Ok(1));
+                let account = find_account(&conn).unwrap();
+                assert!(account.deleted_at.is_none());
 
                 assert_eq!(identity_objects_count(&conn), Ok(3));
                 assert_eq!(account_objects_count(&conn), Ok(2));
@@ -296,8 +296,8 @@ mod with_existing_record {
             let conn = get_conn!(pool);
             assert_eq!(find_record(&conn), Ok(1));
 
-            let found = account::table.find(*USER_ACCOUNT_ID_1).execute(&conn);
-            assert_eq!(found, Ok(1));
+            let account = find_account(&conn).unwrap();
+            assert!(account.deleted_at.is_none());
         }
     }
 }
@@ -386,9 +386,15 @@ fn build_pk() -> PrimaryKey {
     }
 }
 
-fn find_record(conn: &PgConnection) -> diesel::QueryResult<usize> {
+fn find_record(conn: &PgConnection) -> QueryResult<usize> {
     let pk = build_pk();
     identity::table.find(pk.as_tuple()).execute(conn)
+}
+
+fn find_account(conn: &PgConnection) -> QueryResult<Account> {
+    use iam::schema::account;
+
+    account::table.find(*USER_ACCOUNT_ID_1).get_result(conn)
 }
 
 fn create_user_identity(conn: &PgConnection) -> Identity {
@@ -425,7 +431,7 @@ fn create_additional_user_identity(conn: &PgConnection) -> Identity {
         .unwrap()
 }
 
-fn identity_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+fn identity_objects_count(conn: &PgConnection) -> QueryResult<usize> {
     let pk = PrimaryKey {
         provider: *FOXFORD_NAMESPACE_ID,
         label: "oauth2".to_owned(),
@@ -439,7 +445,7 @@ fn identity_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
         .execute(conn)
 }
 
-fn account_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+fn account_objects_count(conn: &PgConnection) -> QueryResult<usize> {
     abac_object::table
         .filter(abac_object::inbound.eq(AbacAttribute::new(
             *IAM_NAMESPACE_ID,
@@ -448,7 +454,7 @@ fn account_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
         .execute(conn)
 }
 
-fn account_policies_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
+fn account_policies_count(conn: &PgConnection) -> QueryResult<usize> {
     abac_policy::table
         .filter(abac_policy::subject.eq(vec![AbacAttribute::new(
             *IAM_NAMESPACE_ID,

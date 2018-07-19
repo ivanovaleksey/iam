@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
@@ -49,7 +49,7 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     )
 }
 
-mod with_existing_record {
+mod with_active_record {
     use super::*;
     use actix_web::HttpMessage;
 
@@ -115,6 +115,119 @@ mod with_existing_record {
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *EXPECTED);
+    }
+
+    #[test]
+    fn user_cannot_read_alien_account() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*USER_ACCOUNT_ID_2),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+    }
+
+    #[test]
+    fn anonymous_cannot_read_account() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req =
+            shared::build_anonymous_request(&srv, serde_json::to_string(&build_request()).unwrap());
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+    }
+}
+
+mod with_deleted_record {
+    use super::*;
+    use actix_web::HttpMessage;
+
+    #[must_use]
+    fn before_each_2(conn: &PgConnection) -> Account {
+        use iam::schema::account;
+
+        let _ = before_each_1(conn);
+
+        let account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
+
+        diesel::update(&account)
+            .set(account::deleted_at.eq(diesel::dsl::now))
+            .execute(conn)
+            .unwrap();
+
+        account
+    }
+
+    #[test]
+    fn admin_cannot_read_account() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*IAM_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::NOT_FOUND);
+    }
+
+    #[test]
+    fn client_cannot_read_user_account() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
+    }
+
+    #[test]
+    fn user_can_read_own_account() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_2(&conn);
+        }
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&build_request()).unwrap(),
+            Some(*USER_ACCOUNT_ID_1),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::FORBIDDEN);
     }
 
     #[test]

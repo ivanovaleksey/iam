@@ -33,7 +33,9 @@ pub fn delete(conn: &PgConnection, id: Uuid) -> QueryResult<Account> {
 
     conn.transaction::<_, _, _>(|| {
         let target = account::table.find(id);
-        let account = diesel::delete(target).get_result::<Account>(conn)?;
+        let account = diesel::update(target)
+            .set(account::deleted_at.eq(diesel::dsl::now))
+            .get_result::<Account>(conn)?;
 
         delete_account_links(conn, account.id)?;
         delete_account_policies(conn, account.id)?;
