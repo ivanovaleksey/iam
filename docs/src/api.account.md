@@ -13,3 +13,4 @@ Only IAM administrator can enable/disable an account.
 ## Methods
 - [Read](api.account.read.html)
 - [Disable](api.account.disable.html)
+- [Enable](api.account.enable.html)

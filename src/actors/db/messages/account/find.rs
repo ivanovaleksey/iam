@@ -10,6 +10,7 @@ use schema::account;
 pub enum Find {
     Any(Uuid),
     Active(Uuid),
+    Disabled(Uuid),
     Enabled(Uuid),
 }
 
@@ -25,6 +26,7 @@ impl Handler<Find> for DbExecutor {
         match msg {
             Find::Any(id) => find_account(&conn, id),
             Find::Active(id) => find_active_account(&conn, id),
+            Find::Disabled(id) => find_disabled_account(&conn, id),
             Find::Enabled(id) => find_enabled_account(&conn, id),
         }
     }
@@ -36,6 +38,14 @@ fn find_account(conn: &PgConnection, id: Uuid) -> QueryResult<Account> {
 
 fn find_active_account(conn: &PgConnection, id: Uuid) -> QueryResult<Account> {
     account::table
+        .filter(account::deleted_at.is_null())
+        .find(id)
+        .get_result(conn)
+}
+
+fn find_disabled_account(conn: &PgConnection, id: Uuid) -> QueryResult<Account> {
+    account::table
+        .filter(account::disabled_at.is_not_null())
         .filter(account::deleted_at.is_null())
         .find(id)
         .get_result(conn)
