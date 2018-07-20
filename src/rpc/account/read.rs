@@ -1,4 +1,5 @@
 use abac::types::AbacAttribute;
+use chrono::{DateTime, Utc};
 use diesel;
 use futures::future::{self, Future};
 use uuid::Uuid;
@@ -13,14 +14,21 @@ pub struct Request {
     pub id: Uuid,
 }
 
-#[derive(Debug, Serialize)]
-pub struct Response {
-    pub id: Uuid,
+pub type Response = rpc::Response<Uuid, ResponseData>;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseData {
+    pub disabled_at: Option<DateTime<Utc>>,
 }
 
 impl From<Account> for Response {
     fn from(account: Account) -> Self {
-        Response { id: account.id }
+        Response {
+            id: account.id,
+            data: ResponseData {
+                disabled_at: account.disabled_at,
+            },
+        }
     }
 }
 
@@ -30,7 +38,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.clone().unwrap();
             move |subject_id| {
-                let msg = account::find::Find(req.id);
+                let msg = account::find::Find::Active(req.id);
                 db.send(msg).from_err().and_then(move |res| {
                     debug!("account find res: {:?}", res);
 
@@ -69,7 +77,13 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     let f = db.send(msg)
                         .from_err()
                         .and_then(rpc::ensure_authorized)
-                        .and_then(|_| Ok(account));
+                        .and_then(move |_| {
+                            if account.disabled_at.is_some() {
+                                Err(rpc::Error::Forbidden)
+                            } else {
+                                Ok(account)
+                            }
+                        });
 
                     Either::A(f)
                 } else {

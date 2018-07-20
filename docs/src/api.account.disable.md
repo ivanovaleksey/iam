@@ -1,9 +1,11 @@
-# Read
+# Disable
+
+Only IAM administrator can disable an account.
 
 ### Method
 
 ```
-account.read
+account.disable
 ```
 
 ### Params
@@ -19,7 +21,7 @@ id    | uuid   | _required_ | -
 ```json
 {
     "jsonrpc": "2.0",
-    "method": "account.read",
+    "method": "account.disable",
     "params": [{
         "id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420"
     }],
@@ -35,7 +37,7 @@ id    | uuid   | _required_ | -
     "result": {
         "id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420",
         "data": {
-            "disabled_at": null
+            "disabled_at": "2018-07-20T19:40:00Z"
         }
     },
     "id": "qwerty"
