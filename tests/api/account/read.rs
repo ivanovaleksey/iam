@@ -161,6 +161,24 @@ mod with_disabled_record {
     use super::*;
     use actix_web::HttpMessage;
 
+    lazy_static! {
+        static ref MOD_EXPECTED: String = {
+            let template = r#"{
+                "jsonrpc": "2.0",
+                "result": {
+                    "data": {
+                        "disabled_at": "2018-07-20T19:40:00Z"
+                    },
+                    "id": "USER_ACCOUNT_ID_1"
+                },
+                "id": "qwerty"
+            }"#;
+
+            let json = template.replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string());
+            shared::strip_json(&json)
+        };
+    }
+
     #[must_use]
     fn before_each_2(conn: &PgConnection) -> Account {
         use chrono::{TimeZone, Utc};
@@ -193,20 +211,7 @@ mod with_disabled_record {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        let resp_template = r#"{
-            "jsonrpc": "2.0",
-            "result": {
-                "data": {
-                    "disabled_at": "2018-07-20T19:40:00Z"
-                },
-                "id": "USER_ACCOUNT_ID_1"
-            },
-            "id": "qwerty"
-        }"#;
-
-        let resp_json = resp_template.replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string());
-
-        assert_eq!(body, shared::strip_json(&resp_json));
+        assert_eq!(body, *MOD_EXPECTED);
     }
 
     #[test]
@@ -229,7 +234,7 @@ mod with_disabled_record {
     }
 
     #[test]
-    fn user_cannot_read_own_account() {
+    fn user_can_read_own_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -244,7 +249,7 @@ mod with_disabled_record {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
+        assert_eq!(body, *MOD_EXPECTED);
     }
 
     #[test]

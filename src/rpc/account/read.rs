@@ -77,13 +77,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                     let f = db.send(msg)
                         .from_err()
                         .and_then(rpc::ensure_authorized)
-                        .and_then(move |_| {
-                            if account.disabled_at.is_some() {
-                                Err(rpc::Error::Forbidden)
-                            } else {
-                                Ok(account)
-                            }
-                        });
+                        .and_then(|_| Ok(account));
 
                     Either::A(f)
                 } else {

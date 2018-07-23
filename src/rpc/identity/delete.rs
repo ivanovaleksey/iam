@@ -3,7 +3,6 @@ use diesel;
 use futures::future::{self, Either, Future};
 
 use actors::db::{authz::Authz, identity};
-use models::identity::Identity;
 use models::identity::PrimaryKey;
 use rpc;
 use settings;
