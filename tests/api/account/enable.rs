@@ -65,7 +65,7 @@ mod with_enabled_record {
     }
 
     #[test]
-    fn admin_can_read_user_account() {
+    fn admin_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -80,11 +80,11 @@ mod with_enabled_record {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *EXPECTED);
+        assert_eq!(body, *shared::api::NOT_FOUND);
     }
 
     #[test]
-    fn client_cannot_read_user_account() {
+    fn client_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -103,7 +103,7 @@ mod with_enabled_record {
     }
 
     #[test]
-    fn user_can_read_own_account() {
+    fn user_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -118,30 +118,11 @@ mod with_enabled_record {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *EXPECTED);
-    }
-
-    #[test]
-    fn user_cannot_read_alien_account() {
-        let shared::Server { mut srv, pool } = shared::build_server();
-
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
-        }
-
-        let req = shared::build_auth_request(
-            &srv,
-            serde_json::to_string(&build_request()).unwrap(),
-            Some(*USER_ACCOUNT_ID_2),
-        );
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
     }
 
     #[test]
-    fn anonymous_cannot_read_account() {
+    fn anonymous_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -163,14 +144,12 @@ mod with_disabled_record {
 
     #[must_use]
     fn before_each_2(conn: &PgConnection) -> Account {
-        use chrono::{TimeZone, Utc};
-
         let _ = before_each_1(conn);
 
         let account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
 
         diesel::update(&account)
-            .set(account::disabled_at.eq(Utc.ymd(2018, 7, 20).and_hms(19, 40, 0)))
+            .set(account::disabled_at.eq(diesel::dsl::now))
             .execute(conn)
             .unwrap();
 
@@ -178,7 +157,7 @@ mod with_disabled_record {
     }
 
     #[test]
-    fn admin_can_read_user_account() {
+    fn admin_can_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -193,24 +172,17 @@ mod with_disabled_record {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
-        let resp_template = r#"{
-            "jsonrpc": "2.0",
-            "result": {
-                "data": {
-                    "disabled_at": "2018-07-20T19:40:00Z"
-                },
-                "id": "USER_ACCOUNT_ID_1"
-            },
-            "id": "qwerty"
-        }"#;
+        assert_eq!(body, *EXPECTED);
 
-        let resp_json = resp_template.replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string());
-
-        assert_eq!(body, shared::strip_json(&resp_json));
+        {
+            let conn = get_conn!(pool);
+            let record = find_record(&conn);
+            assert!(record.disabled_at.is_none());
+        }
     }
 
     #[test]
-    fn client_cannot_read_user_account() {
+    fn client_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -226,10 +198,16 @@ mod with_disabled_record {
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            let record = find_record(&conn);
+            assert!(record.disabled_at.is_some());
+        }
     }
 
     #[test]
-    fn user_cannot_read_own_account() {
+    fn user_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -245,10 +223,16 @@ mod with_disabled_record {
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            let record = find_record(&conn);
+            assert!(record.disabled_at.is_some());
+        }
     }
 
     #[test]
-    fn anonymous_cannot_read_account() {
+    fn anonymous_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -261,6 +245,12 @@ mod with_disabled_record {
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
+
+        {
+            let conn = get_conn!(pool);
+            let record = find_record(&conn);
+            assert!(record.disabled_at.is_some());
+        }
     }
 }
 
@@ -283,7 +273,7 @@ mod with_deleted_record {
     }
 
     #[test]
-    fn admin_cannot_read_account() {
+    fn admin_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -302,7 +292,7 @@ mod with_deleted_record {
     }
 
     #[test]
-    fn client_cannot_read_user_account() {
+    fn client_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -321,26 +311,7 @@ mod with_deleted_record {
     }
 
     #[test]
-    fn user_can_read_own_account() {
-        let shared::Server { mut srv, pool } = shared::build_server();
-
-        {
-            let conn = get_conn!(pool);
-            let _ = before_each_2(&conn);
-        }
-
-        let req = shared::build_auth_request(
-            &srv,
-            serde_json::to_string(&build_request()).unwrap(),
-            Some(*USER_ACCOUNT_ID_1),
-        );
-        let resp = srv.execute(req.send()).unwrap();
-        let body = srv.execute(resp.body()).unwrap();
-        assert_eq!(body, *shared::api::FORBIDDEN);
-    }
-
-    #[test]
-    fn user_cannot_read_alien_account() {
+    fn user_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -359,7 +330,7 @@ mod with_deleted_record {
     }
 
     #[test]
-    fn anonymous_cannot_read_account() {
+    fn anonymous_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -385,7 +356,7 @@ mod without_existing_record {
     }
 
     #[test]
-    fn admin_can_read_user_account() {
+    fn admin_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -404,7 +375,7 @@ mod without_existing_record {
     }
 
     #[test]
-    fn client_cannot_read_user_account() {
+    fn client_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -423,7 +394,7 @@ mod without_existing_record {
     }
 
     #[test]
-    fn user_cannot_read_alien_account() {
+    fn user_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -442,7 +413,7 @@ mod without_existing_record {
     }
 
     #[test]
-    fn anonymous_cannot_read_account() {
+    fn anonymous_cannot_enable_account() {
         let shared::Server { mut srv, pool } = shared::build_server();
 
         {
@@ -461,10 +432,17 @@ mod without_existing_record {
 fn build_request() -> serde_json::Value {
     json!({
         "jsonrpc": "2.0",
-        "method": "account.read",
+        "method": "account.enable",
         "params": [{
             "id": *USER_ACCOUNT_ID_1
         }],
         "id": "qwerty"
     })
+}
+
+fn find_record(conn: &PgConnection) -> Account {
+    account::table
+        .find(*USER_ACCOUNT_ID_1)
+        .get_result(conn)
+        .unwrap()
 }

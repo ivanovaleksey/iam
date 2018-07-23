@@ -42,7 +42,7 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
     };
 
     let account = diesel::insert_into(account::table)
-        .values((account::id.eq(id), account::enabled.eq(true)))
+        .values(account::id.eq(id))
         .get_result::<Account>(conn)
         .unwrap();
 

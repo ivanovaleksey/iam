@@ -1,8 +1,8 @@
 table! {
     account (id) {
         id -> Uuid,
-        enabled -> Bool,
         constraints -> Jsonb,
+        disabled_at -> Nullable<Timestamptz>,
         deleted_at -> Nullable<Timestamptz>,
     }
 }
@@ -36,6 +36,7 @@ table! {
     }
 }
 
+joinable!(identity -> account (account_id));
 joinable!(identity -> namespace (provider));
 joinable!(namespace -> account (account_id));
 joinable!(refresh_token -> account (account_id));

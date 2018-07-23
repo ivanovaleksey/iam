@@ -1,9 +1,11 @@
-# Read
+# Enable
+
+Only IAM administrator can enable an account.
 
 ### Method
 
 ```
-account.read
+account.enable
 ```
 
 ### Params
@@ -19,7 +21,7 @@ id    | uuid   | _required_ | -
 ```json
 {
     "jsonrpc": "2.0",
-    "method": "account.read",
+    "method": "account.enable",
     "params": [{
         "id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420"
     }],

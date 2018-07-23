@@ -7,11 +7,11 @@ use uuid::Uuid;
 
 use abac_attribute::{CollectionKind, OperationKind, UriKind};
 use actors::DbExecutor;
-use models::{Account, NewAccount};
+use models::Account;
 use settings;
 
 #[derive(Debug)]
-pub struct Insert(pub NewAccount);
+pub struct Insert;
 
 impl Message for Insert {
     type Result = QueryResult<Account>;
@@ -20,18 +20,18 @@ impl Message for Insert {
 impl Handler<Insert> for DbExecutor {
     type Result = QueryResult<Account>;
 
-    fn handle(&mut self, msg: Insert, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: Insert, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        insert_account(conn, msg.0)
+        insert_account(conn)
     }
 }
 
-pub fn insert_account(conn: &PgConnection, changeset: NewAccount) -> QueryResult<Account> {
+pub fn insert_account(conn: &PgConnection) -> QueryResult<Account> {
     use schema::account;
 
     conn.transaction::<_, _, _>(|| {
         let account = diesel::insert_into(account::table)
-            .values(changeset)
+            .default_values()
             .get_result::<Account>(conn)?;
 
         insert_account_links(conn, account.id)?;

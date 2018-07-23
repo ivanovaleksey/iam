@@ -9,7 +9,7 @@ use abac::types::AbacAttribute;
 
 use iam::abac_attribute::UriKind;
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};
-use iam::schema::identity;
+use iam::schema::{account, identity};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{
@@ -84,97 +84,183 @@ mod with_existing_record {
     mod with_client {
         use super::*;
 
-        #[test]
-        fn can_delete_last_identity() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod with_active_user {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let _ = before_each_2(conn);
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *EXPECTED);
+            #[test]
+            fn can_delete_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(0));
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
 
-                let account = find_account(&conn).unwrap();
-                assert!(account.deleted_at.is_some());
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
 
-                assert_eq!(identity_objects_count(&conn), Ok(0));
-                assert_eq!(account_objects_count(&conn), Ok(0));
-                assert_eq!(account_policies_count(&conn), Ok(0));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(0));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_some());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(0));
+                    assert_eq!(account_objects_count(&conn), Ok(0));
+                    assert_eq!(account_policies_count(&conn), Ok(0));
+                }
+            }
+
+            #[test]
+            fn can_delete_not_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                    create_additional_user_identity(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
+
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(0));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(0));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
+            }
+
+            #[test]
+            fn cannot_delete_alien_provider_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*NETOLOGY_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(3));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
             }
         }
 
-        #[test]
-        fn can_delete_not_last_identity() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod with_disabled_user {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-                create_additional_user_identity(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let identity = before_each_2(&conn);
+
+                diesel::update(account::table.find(identity.account_id))
+                    .set(account::disabled_at.eq(diesel::dsl::now))
+                    .execute(conn)
+                    .unwrap();
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *EXPECTED);
+            #[test]
+            fn cannot_delete_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(0));
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
 
-                let account = find_account(&conn).unwrap();
-                assert!(account.deleted_at.is_none());
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
 
-                assert_eq!(identity_objects_count(&conn), Ok(0));
-                assert_eq!(account_objects_count(&conn), Ok(2));
-                assert_eq!(account_policies_count(&conn), Ok(1));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(3));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
             }
-        }
 
-        #[test]
-        fn cannot_delete_alien_provider_identity() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+            #[test]
+            fn cannot_delete_not_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                    create_additional_user_identity(&conn);
+                }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(1));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
 
-                let account = find_account(&conn).unwrap();
-                assert!(account.deleted_at.is_none());
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
 
-                assert_eq!(identity_objects_count(&conn), Ok(3));
-                assert_eq!(account_objects_count(&conn), Ok(2));
-                assert_eq!(account_policies_count(&conn), Ok(1));
+                    assert_eq!(identity_objects_count(&conn), Ok(3));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
             }
         }
     }
@@ -182,97 +268,183 @@ mod with_existing_record {
     mod with_user {
         use super::*;
 
-        #[test]
-        fn can_delete_last_identity() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod when_active {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let _ = before_each_2(conn);
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*USER_ACCOUNT_ID_1),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *EXPECTED);
+            #[test]
+            fn can_delete_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(0));
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
 
-                let account = find_account(&conn).unwrap();
-                assert!(account.deleted_at.is_some());
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*USER_ACCOUNT_ID_1),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
 
-                assert_eq!(identity_objects_count(&conn), Ok(0));
-                assert_eq!(account_objects_count(&conn), Ok(0));
-                assert_eq!(account_policies_count(&conn), Ok(0));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(0));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_some());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(0));
+                    assert_eq!(account_objects_count(&conn), Ok(0));
+                    assert_eq!(account_policies_count(&conn), Ok(0));
+                }
+            }
+
+            #[test]
+            fn can_delete_not_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                    create_additional_user_identity(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*USER_ACCOUNT_ID_1),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
+
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(0));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(0));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
+            }
+
+            #[test]
+            fn cannot_delete_alien_user_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*USER_ACCOUNT_ID_2),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(3));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
             }
         }
 
-        #[test]
-        fn can_delete_not_last_identity() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod when_disabled {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-                create_additional_user_identity(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let identity = before_each_2(conn);
+
+                diesel::update(account::table.find(identity.account_id))
+                    .set(account::disabled_at.eq(diesel::dsl::now))
+                    .execute(conn)
+                    .unwrap();
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*USER_ACCOUNT_ID_1),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *EXPECTED);
+            #[test]
+            fn cannot_delete_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(0));
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
 
-                let account = find_account(&conn).unwrap();
-                assert!(account.deleted_at.is_none());
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*USER_ACCOUNT_ID_1),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
 
-                assert_eq!(identity_objects_count(&conn), Ok(0));
-                assert_eq!(account_objects_count(&conn), Ok(2));
-                assert_eq!(account_policies_count(&conn), Ok(1));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
+
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
+
+                    assert_eq!(identity_objects_count(&conn), Ok(3));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
             }
-        }
 
-        #[test]
-        fn cannot_delete_alien_user_identity() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+            #[test]
+            fn cannot_delete_not_last_identity() {
+                let shared::Server { mut srv, pool } = shared::build_server();
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
-            }
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                    create_additional_user_identity(&conn);
+                }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*USER_ACCOUNT_ID_2),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*USER_ACCOUNT_ID_1),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
 
-            {
-                let conn = get_conn!(pool);
-                assert_eq!(find_record(&conn), Ok(1));
+                {
+                    let conn = get_conn!(pool);
+                    assert_eq!(find_record(&conn), Ok(1));
 
-                let account = find_account(&conn).unwrap();
-                assert!(account.deleted_at.is_none());
+                    let account = find_account(&conn).unwrap();
+                    assert!(account.deleted_at.is_none());
 
-                assert_eq!(identity_objects_count(&conn), Ok(3));
-                assert_eq!(account_objects_count(&conn), Ok(2));
-                assert_eq!(account_policies_count(&conn), Ok(1));
+                    assert_eq!(identity_objects_count(&conn), Ok(3));
+                    assert_eq!(account_objects_count(&conn), Ok(2));
+                    assert_eq!(account_policies_count(&conn), Ok(1));
+                }
             }
         }
     }
