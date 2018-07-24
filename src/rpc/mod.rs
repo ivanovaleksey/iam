@@ -1,4 +1,4 @@
-use actix::{Addr, Syn};
+use actix::Addr;
 use actix_web::{self, HttpMessage, HttpRequest, HttpResponse};
 use diesel::QueryResult;
 use futures::future::{self, Either, Future};
@@ -37,7 +37,7 @@ mod ping;
 // TODO: remove Default on new jsonrpc_core version
 #[derive(Clone, Default)]
 pub struct Meta {
-    pub db: Option<Addr<Syn, DbExecutor>>,
+    pub db: Option<Addr<DbExecutor>>,
     pub subject: Option<Uuid>,
 }
 
