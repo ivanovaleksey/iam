@@ -32,3 +32,4 @@ mod authz;
 mod identity;
 mod namespace;
 mod ping;
+mod rpc;

@@ -65,13 +65,7 @@ impl AccessToken {
         if let Ok((_header, payload)) =
             frank_jwt::decode(&token.value.to_owned(), &key, frank_jwt::Algorithm::ES256)
         {
-            match serde_json::from_value(payload) {
-                Ok(token) => {
-                    debug!("JWT token: {:?}", token);
-                    Ok(token)
-                }
-                Err(_) => Err(DecodeError::InvalidPayload),
-            }
+            serde_json::from_value(payload).map_err(|_| DecodeError::InvalidPayload)
         } else {
             Err(DecodeError::InvalidSignature)
         }

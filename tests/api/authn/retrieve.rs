@@ -153,8 +153,8 @@ fn with_invalid_client_token_payload() {
         let now = Utc::now().timestamp();
         let token = json!({
             "aud": "iam.netology-group.services".to_owned(),
-            "exp": NaiveDateTime::from_timestamp(now + 300, 0),
-            "iat": NaiveDateTime::from_timestamp(now, 0),
+            "exp": NaiveDateTime::from_timestamp(now + 300, 0).timestamp(),
+            "iat": NaiveDateTime::from_timestamp(now, 0).timestamp(),
             "sub": *FOXFORD_USER_ID,
         });
         shared::sign_access_token(token)
@@ -177,7 +177,7 @@ fn with_invalid_client_token_payload() {
 }
 
 #[test]
-fn with_invalid_client_token() {
+fn with_expired_client_token() {
     let shared::Server { mut srv, pool } = shared::build_server();
 
     {
@@ -196,8 +196,8 @@ fn with_invalid_client_token() {
         let token = json!({
             "aud": "iam.netology-group.services".to_owned(),
             "iss": "foxford.ru".to_owned(),
-            "exp": NaiveDateTime::from_timestamp(now - 100, 0),
-            "iat": NaiveDateTime::from_timestamp(now - 400, 0),
+            "exp": NaiveDateTime::from_timestamp(now - 100, 0).timestamp(),
+            "iat": NaiveDateTime::from_timestamp(now - 400, 0).timestamp(),
             "sub": *FOXFORD_USER_ID,
         });
         shared::sign_access_token(token)

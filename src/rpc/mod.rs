@@ -198,11 +198,17 @@ pub fn index(
                     };
                     match authn::jwt::AccessToken::decode(&raw_token) {
                         Ok(token) => {
-                            meta.subject = Some(token.sub);
-                            Ok(())
+                            let validator = authn::jwt::Validator::default();
+                            if validator.call(&token) {
+                                meta.subject = Some(token.sub);
+                                Ok(())
+                            } else {
+                                debug!("Invalid JWT");
+                                Err(())
+                            }
                         }
                         Err(e) => {
-                            error!("{:?}", e);
+                            error!("{}", e);
                             Err(())
                         }
                     }
