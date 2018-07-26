@@ -1,5 +1,5 @@
 create table namespace (
-  id uuid default uuid_generate_v4(),
+  id uuid default gen_random_uuid(),
   label text not null,
   account_id uuid not null,
   deleted_at timestamptz,

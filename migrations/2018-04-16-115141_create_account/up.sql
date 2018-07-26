@@ -1,5 +1,5 @@
 create table account(
-  id uuid default uuid_generate_v4(),
+  id uuid default gen_random_uuid(),
   constraints jsonb not null default '{}',
   disabled_at timestamptz,
   deleted_at timestamptz,
