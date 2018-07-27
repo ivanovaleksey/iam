@@ -1,18 +1,8 @@
 use futures::{future, Future};
-use uuid::Uuid;
 
 use rpc;
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct Request {
-    pub filter: Filter,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct Filter {
-    pub namespace_ids: Vec<Uuid>,
-}
-
+pub type Request = rpc::ListRequest;
 pub type Response = rpc::ListResponse<rpc::abac_subject_attr::read::Response>;
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
@@ -39,7 +29,10 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
         .and_then({
             let db = meta.db.unwrap();
             move |_| {
-                let msg = abac_subject_attr::select::Select::from(req);
+                let msg = abac_subject_attr::select::Select {
+                    namespace_ids: req.filter.namespace_ids,
+                    key: req.filter.key,
+                };
                 db.send(msg).from_err().and_then(|res| {
                     debug!("abac subject select res: {:?}", res);
                     Ok(Response::from(res?))
