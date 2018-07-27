@@ -95,8 +95,8 @@ pub struct Response<Id, Data> {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ListRequest {
-    pub filter: ListRequestFilter,
+pub struct ListRequest<T = ListRequestFilter> {
+    pub filter: T,
 
     #[serde(flatten)]
     pub pagination: Pagination,

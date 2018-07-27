@@ -11,6 +11,14 @@ abac_policy.list
 Name   | Type   | Default    | Description
 -------| ------ | ---------- | ------------------
 filter | object | _required_ | -
+limit  | int    | see config | -
+offset | int    | 0          | -
+
+#### Filter
+
+Name          | Type   | Default    | Description
+------------- | ------ | ---------- | ------------------
+namespace_ids | [uuid] | _required_ | -
 
 ### Example
 
@@ -25,7 +33,9 @@ filter | object | _required_ | -
             "namespace_ids": [
                 "bab37008-3dc5-492c-af73-80c241241d71"
             ]
-        }
+        },
+        "limit": 25,
+        "offset": 0
     }],
     "id": "qwerty"
 }
