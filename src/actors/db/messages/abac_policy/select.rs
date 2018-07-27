@@ -4,11 +4,12 @@ use diesel::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use rpc::abac_policy::list;
 
 #[derive(Debug)]
 pub struct Select {
     pub namespace_ids: Vec<Uuid>,
+    pub limit: u16,
+    pub offset: u16,
 }
 
 impl Message for Select {
@@ -20,24 +21,19 @@ impl Handler<Select> for DbExecutor {
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
+        select(conn, &msg)
     }
 }
 
-impl From<list::Request> for Select {
-    fn from(req: list::Request) -> Self {
-        Select {
-            namespace_ids: req.filter.namespace_ids,
-        }
-    }
-}
-
-fn call(conn: &PgConnection, msg: Select) -> QueryResult<Vec<AbacPolicy>> {
-    use abac::schema::abac_policy::dsl::*;
+fn select(conn: &PgConnection, msg: &Select) -> QueryResult<Vec<AbacPolicy>> {
+    use abac::schema::abac_policy;
     use diesel::dsl::any;
 
-    let query = abac_policy.filter(namespace_id.eq(any(msg.namespace_ids)));
-    let items = query.load(conn)?;
+    let query = abac_policy::table
+        .filter(abac_policy::namespace_id.eq(any(&msg.namespace_ids)))
+        .order(abac_policy::created_at.asc())
+        .limit(i64::from(msg.limit))
+        .offset(i64::from(msg.offset));
 
-    Ok(items)
+    query.load(conn)
 }
