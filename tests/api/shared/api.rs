@@ -1,9 +1,20 @@
-pub use self::response::{FORBIDDEN, NOT_FOUND, UNAUTHORIZED};
+pub use self::response::{BAD_REQUEST, FORBIDDEN, NOT_FOUND, UNAUTHORIZED};
 
 mod response {
     use shared;
 
     lazy_static! {
+        pub static ref BAD_REQUEST: String = {
+            let json = r#"{
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": 400,
+                    "message": "Bad request"
+                },
+                "id": "qwerty"
+            }"#;
+            shared::strip_json(json)
+        };
         pub static ref UNAUTHORIZED: String = {
             let json = r#"{
                 "jsonrpc": "2.0",
