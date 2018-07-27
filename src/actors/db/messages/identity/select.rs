@@ -52,9 +52,7 @@ fn select_by_ids(conn: &PgConnection, ids: &[PrimaryKey]) -> QueryResult<Vec<Ide
         .filter(diesel::dsl::sql(&filter))
         .order(identity::created_at.asc());
 
-    let items = query.load(conn)?;
-
-    Ok(items)
+    query.load(conn)
 }
 
 fn select_by_account_id(conn: &PgConnection, account_id: Uuid) -> QueryResult<Vec<Identity>> {
@@ -62,9 +60,7 @@ fn select_by_account_id(conn: &PgConnection, account_id: Uuid) -> QueryResult<Ve
         .filter(identity::account_id.eq(account_id))
         .order(identity::created_at.asc());
 
-    let items = query.load(conn)?;
-
-    Ok(items)
+    query.load(conn)
 }
 
 fn select_by_account_id_and_provider(
@@ -77,7 +73,5 @@ fn select_by_account_id_and_provider(
         .filter(identity::provider.eq(provider))
         .order(identity::created_at.asc());
 
-    let items = query.load(conn)?;
-
-    Ok(items)
+    query.load(conn)
 }

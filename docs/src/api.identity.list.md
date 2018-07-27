@@ -11,6 +11,15 @@ identity.list
 Name   | Type   | Default    | Description
 ------ | ------ | ---------- | ------------------
 filter | object | _required_ | -
+limit  | int    | see config | -
+offset | int    | 0          | -
+
+#### Filter
+
+Name          | Type   | Default    | Description
+------------- | ------ | ---------- | ------------------
+provider      | uuid   | -          | -
+account_id    | uuid   | -          | -
 
 ### Example
 
@@ -23,7 +32,9 @@ filter | object | _required_ | -
     "params": [{
         "filter": {
             "provider": "bab37008-3dc5-492c-af73-80c241241d71" 
-        }
+        },
+        "limit": 25,
+        "offset": 0
     }],
     "id": "qwerty"
 }
