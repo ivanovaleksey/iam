@@ -12,8 +12,8 @@ use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
 use shared::{
-    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_NAMESPACE_ID, NETOLOGY_ACCOUNT_ID,
-    NETOLOGY_NAMESPACE_ID,
+    self, FOXFORD_ACCOUNT_ID, FOXFORD_NAMESPACE_ID, IAM_ACCOUNT_ID, IAM_NAMESPACE_ID,
+    NETOLOGY_ACCOUNT_ID, NETOLOGY_NAMESPACE_ID,
 };
 
 #[must_use]
@@ -70,7 +70,7 @@ mod with_client {
                     },
                     "outbound": {
                         "key": "operation",
-                        "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "namespace_id": "IAM_NAMESPACE_ID",
                         "value": "any"
                     }
                 },
@@ -82,15 +82,28 @@ mod with_client {
                     },
                     "outbound": {
                         "key": "operation",
+                        "namespace_id": "IAM_NAMESPACE_ID",
+                        "value": "any"
+                    }
+                },
+                {
+                    "inbound": {
+                        "key": "action",
                         "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "value": "create"
+                    },
+                    "outbound": {
+                        "key": "action",
+                        "namespace_id": "IAM_NAMESPACE_ID",
                         "value": "any"
                     }
                 }
             ],
             "id": "qwerty"
         }"#;
-        let resp_json =
-            resp_template.replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+        let resp_json = resp_template
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
         assert_eq!(body, shared::strip_json(&resp_json));
     }
 
@@ -121,15 +134,16 @@ mod with_client {
                     },
                     "outbound": {
                         "key": "operation",
-                        "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                        "namespace_id": "IAM_NAMESPACE_ID",
                         "value": "any"
                     }
                 }
             ],
             "id": "qwerty"
         }"#;
-        let resp_json =
-            resp_template.replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string());
+        let resp_json = resp_template
+            .replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
         assert_eq!(body, shared::strip_json(&resp_json));
     }
 
@@ -201,15 +215,120 @@ mod with_client {
                     },
                     "outbound": {
                         "key": "operation",
-                        "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                        "namespace_id": "IAM_NAMESPACE_ID",
                         "value": "any"
                     }
                 }
             ],
             "id": "qwerty"
         }"#;
-        let resp_json =
-            resp_template.replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string());
+        let resp_json = resp_template
+            .replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
+    }
+
+    #[test]
+    fn can_filter_by_key_and_namespace_both_inbound_and_outbound_1() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": "abac_action_attr.list",
+            "params": [{
+                "filter": {
+                    "namespace_ids": vec![*FOXFORD_NAMESPACE_ID],
+                    "key": "action",
+                }
+            }],
+            "id": "qwerty"
+        });
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&payload).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "inbound": {
+                        "key": "action",
+                        "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "value": "create"
+                    },
+                    "outbound": {
+                        "key": "action",
+                        "namespace_id": "IAM_NAMESPACE_ID",
+                        "value": "any"
+                    }
+                }
+            ],
+            "id": "qwerty"
+        }"#;
+        let resp_json = resp_template
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
+    }
+
+    #[test]
+    fn can_filter_by_key_and_namespace_both_inbound_and_outbound_2() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": "abac_action_attr.list",
+            "params": [{
+                "filter": {
+                    "namespace_ids": vec![*IAM_NAMESPACE_ID],
+                    "key": "action",
+                }
+            }],
+            "id": "qwerty"
+        });
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&payload).unwrap(),
+            Some(*IAM_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "inbound": {
+                        "key": "action",
+                        "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "value": "create"
+                    },
+                    "outbound": {
+                        "key": "action",
+                        "namespace_id": "IAM_NAMESPACE_ID",
+                        "value": "any"
+                    }
+                }
+            ],
+            "id": "qwerty"
+        }"#;
+        let resp_json = resp_template
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
         assert_eq!(body, shared::strip_json(&resp_json));
     }
 }
@@ -255,7 +374,7 @@ fn create_records(conn: &PgConnection) {
                     value: "create".to_owned(),
                 },
                 outbound: AbacAttribute {
-                    namespace_id: *FOXFORD_NAMESPACE_ID,
+                    namespace_id: *IAM_NAMESPACE_ID,
                     key: "operation".to_owned(),
                     value: "any".to_owned(),
                 },
@@ -267,7 +386,7 @@ fn create_records(conn: &PgConnection) {
                     value: "read".to_owned(),
                 },
                 outbound: AbacAttribute {
-                    namespace_id: *FOXFORD_NAMESPACE_ID,
+                    namespace_id: *IAM_NAMESPACE_ID,
                     key: "operation".to_owned(),
                     value: "any".to_owned(),
                 },
@@ -279,8 +398,20 @@ fn create_records(conn: &PgConnection) {
                     value: "create".to_owned(),
                 },
                 outbound: AbacAttribute {
-                    namespace_id: *NETOLOGY_NAMESPACE_ID,
+                    namespace_id: *IAM_NAMESPACE_ID,
                     key: "operation".to_owned(),
+                    value: "any".to_owned(),
+                },
+            },
+            AbacAction {
+                inbound: AbacAttribute {
+                    namespace_id: *FOXFORD_NAMESPACE_ID,
+                    key: "action".to_owned(),
+                    value: "create".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "action".to_owned(),
                     value: "any".to_owned(),
                 },
             },
