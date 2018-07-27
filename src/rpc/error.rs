@@ -9,11 +9,14 @@ pub enum Error {
     #[fail(display = "{}", _0)]
     ActorMailbox(#[cause] actix::MailboxError),
 
-    #[fail(display = "Forbidden")]
-    Forbidden,
-
     #[fail(display = "{}", _0)]
     Db(#[cause] diesel::result::Error),
+
+    #[fail(display = "Bad request")]
+    BadRequest,
+
+    #[fail(display = "Forbidden")]
+    Forbidden,
 }
 
 impl From<actix::MailboxError> for Error {
@@ -46,6 +49,7 @@ impl From<Error> for jsonrpc::Error {
                 diesel::result::Error::NotFound => server_error!(404, e),
                 _ => server_error!(422, e),
             },
+            Error::BadRequest => server_error!(400, e),
             Error::Forbidden => server_error!(403, e),
         }
     }

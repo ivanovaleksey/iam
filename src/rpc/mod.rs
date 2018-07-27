@@ -18,9 +18,10 @@ use rpc::abac_policy::Rpc as AbacPolicyRpc;
 use rpc::abac_subject_attr::Rpc as AbacSubjectRpc;
 use rpc::account::Rpc as AccountRpc;
 use rpc::authz::Rpc as AuthRpc;
-pub use rpc::error::Error;
+pub use rpc::error::{Error, Result};
 use rpc::identity::Rpc as IdentityRpc;
 use rpc::namespace::Rpc as NamespaceRpc;
+use rpc::pagination::Pagination;
 use rpc::ping::Rpc as PingRpc;
 use AppState;
 
@@ -33,6 +34,7 @@ pub mod authz;
 pub mod error;
 pub mod identity;
 pub mod namespace;
+mod pagination;
 mod ping;
 
 // TODO: remove Default on new jsonrpc_core version
@@ -95,6 +97,9 @@ pub struct Response<Id, Data> {
 #[serde(deny_unknown_fields)]
 pub struct ListRequest {
     pub filter: ListRequestFilter,
+
+    #[serde(flatten)]
+    pub pagination: Pagination,
 }
 
 #[derive(Debug, Deserialize)]
@@ -117,7 +122,7 @@ where
     }
 }
 
-pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), Error> {
+pub fn ensure_authorized(res: QueryResult<bool>) -> Result<()> {
     if res? {
         Ok(())
     } else {
@@ -125,7 +130,7 @@ pub fn ensure_authorized(res: QueryResult<bool>) -> Result<(), Error> {
     }
 }
 
-pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid, Error> {
+pub fn forbid_anonymous(subject: Option<Uuid>) -> Result<Uuid> {
     subject.ok_or_else(|| Error::Forbidden)
 }
 
@@ -262,4 +267,89 @@ fn authorize_collection(
     };
 
     db.send(msg).from_err().and_then(ensure_authorized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialize_list_request_without_pagination() {
+        let s = r#"{
+            "filter": {
+                "namespace_ids": ["bab37008-3dc5-492c-af73-80c241241d71"]
+            }
+        }"#;
+
+        let req = serde_json::from_str::<ListRequest>(s);
+        assert!(req.is_ok());
+
+        let req = req.unwrap();
+        let expected = Pagination {
+            limit: 25,
+            offset: 0,
+        };
+        assert_eq!(req.pagination, expected);
+    }
+
+    #[test]
+    fn deserialize_list_request_with_pagination() {
+        let s = r#"{
+            "filter": {
+                "namespace_ids": ["bab37008-3dc5-492c-af73-80c241241d71"]
+            },
+            "limit": 20,
+            "offset": 3
+        }"#;
+
+        let req = serde_json::from_str::<ListRequest>(s);
+        assert!(req.is_ok());
+
+        let req = req.unwrap();
+        let expected = Pagination {
+            limit: 20,
+            offset: 3,
+        };
+        assert_eq!(req.pagination, expected);
+    }
+
+    #[test]
+    fn deserialize_list_request_with_limit() {
+        let s = r#"{
+            "filter": {
+                "namespace_ids": ["bab37008-3dc5-492c-af73-80c241241d71"]
+            },
+            "limit": 20
+        }"#;
+
+        let req = serde_json::from_str::<ListRequest>(s);
+        assert!(req.is_ok());
+
+        let req = req.unwrap();
+        let expected = Pagination {
+            limit: 20,
+            offset: 0,
+        };
+        assert_eq!(req.pagination, expected);
+    }
+
+    #[test]
+    fn deserialize_list_request_with_offset() {
+        let s = r#"{
+            "filter": {
+                "namespace_ids": ["bab37008-3dc5-492c-af73-80c241241d71"]
+            },
+            "offset": 3
+        }"#;
+
+        let req = serde_json::from_str::<ListRequest>(s);
+        assert!(req.is_ok());
+
+        let req = req.unwrap();
+        let expected = Pagination {
+            limit: 25,
+            offset: 3,
+        };
+        assert_eq!(req.pagination, expected);
+    }
 }

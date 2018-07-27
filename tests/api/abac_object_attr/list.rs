@@ -342,6 +342,190 @@ mod with_client {
             resp_template.replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
         assert_eq!(body, shared::strip_json(&resp_json));
     }
+
+    #[test]
+    fn can_list_with_pagination() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        {
+            let payload = json!({
+                "jsonrpc": "2.0",
+                "method": "abac_object_attr.list",
+                "params": [{
+                    "filter": {
+                        "namespace_ids": vec![*FOXFORD_NAMESPACE_ID],
+                    },
+                    "limit": 1
+                }],
+                "id": "qwerty"
+            });
+
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&payload).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            let resp_template = r#"{
+                "jsonrpc": "2.0",
+                "result": [
+                    {
+                        "inbound": {
+                            "key": "uri",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "webinar/1"
+                        },
+                        "outbound": {
+                            "key": "type",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "webinar"
+                        }
+                    }
+                ],
+                "id": "qwerty"
+            }"#;
+            let resp_json =
+                resp_template.replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+            assert_eq!(body, shared::strip_json(&resp_json));
+        }
+
+        {
+            let payload = json!({
+                "jsonrpc": "2.0",
+                "method": "abac_object_attr.list",
+                "params": [{
+                    "filter": {
+                        "namespace_ids": vec![*FOXFORD_NAMESPACE_ID],
+                    },
+                    "limit": 2,
+                    "offset": 1
+                }],
+                "id": "qwerty"
+            });
+
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&payload).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            let resp_template = r#"{
+                "jsonrpc": "2.0",
+                "result": [
+                    {
+                        "inbound": {
+                            "key": "uri",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "webinar/2"
+                        },
+                        "outbound": {
+                            "key": "type",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "webinar"
+                        }
+                    },
+                    {
+                        "inbound": {
+                            "key": "uri",
+                            "namespace_id": "STORAGE_NAMESPACE_ID",
+                            "value": "bucket-1/set-1"
+                        },
+                        "outbound": {
+                            "key": "uri",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "webinar/1"
+                        }
+                    }
+                ],
+                "id": "qwerty"
+            }"#;
+            let resp_json = resp_template
+                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+                .replace("STORAGE_NAMESPACE_ID", &STORAGE_NAMESPACE_ID.to_string());
+            assert_eq!(body, shared::strip_json(&resp_json));
+        }
+
+        {
+            let payload = json!({
+                "jsonrpc": "2.0",
+                "method": "abac_object_attr.list",
+                "params": [{
+                    "filter": {
+                        "namespace_ids": vec![*FOXFORD_NAMESPACE_ID],
+                    },
+                    "offset": 3
+                }],
+                "id": "qwerty"
+            });
+
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&payload).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            let resp_template = r#"{
+                "jsonrpc": "2.0",
+                "result": [
+                    {
+                        "inbound": {
+                            "key": "uri",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "webinar/1"
+                        },
+                        "outbound": {
+                            "key": "kind",
+                            "namespace_id": "FOXFORD_NAMESPACE_ID",
+                            "value": "math"
+                        }
+                    }
+                ],
+                "id": "qwerty"
+            }"#;
+            let resp_json =
+                resp_template.replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string());
+            assert_eq!(body, shared::strip_json(&resp_json));
+        }
+    }
+
+    #[test]
+    fn cannot_paginate_more_than_configured() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": "abac_object_attr.list",
+            "params": [{
+                "filter": {
+                    "namespace_ids": vec![*FOXFORD_NAMESPACE_ID],
+                },
+                "limit": 200
+            }],
+            "id": "qwerty"
+        });
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&payload).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::BAD_REQUEST);
+    }
 }
 
 #[test]

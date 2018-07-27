@@ -27,11 +27,17 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
             }
         })
         .and_then({
+            let limit = req.pagination.limit;
+            move |_| rpc::pagination::check_limit(limit)
+        })
+        .and_then({
             let db = meta.db.unwrap();
             move |_| {
                 let msg = abac_object_attr::select::Select {
                     namespace_ids: req.filter.namespace_ids,
                     key: req.filter.key,
+                    limit: req.pagination.limit,
+                    offset: req.pagination.offset,
                 };
                 db.send(msg).from_err().and_then(|res| {
                     debug!("abac object select res: {:?}", res);
