@@ -2,7 +2,7 @@
 
 Identity and Access Management
 
-
+[![dependency status](https://deps.rs/repo/github/netology-group/iam/status.svg)](https://deps.rs/repo/github/netology-group/iam)
 
 ### License
 
