@@ -408,6 +408,133 @@ mod with_client {
         let body = srv.execute(resp.body()).unwrap();
         assert_eq!(body, *shared::api::FORBIDDEN);
     }
+
+    #[test]
+    fn can_list_with_pagination() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        {
+            let payload = json!({
+                "jsonrpc": "2.0",
+                "method": "identity.list",
+                "params": [{
+                    "filter": {
+                        "provider": *FOXFORD_NAMESPACE_ID,
+                    },
+                    "limit": 1,
+                }],
+                "id": "qwerty"
+            });
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&payload).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            let resp_template = r#"{
+                "jsonrpc": "2.0",
+                "result": [
+                    {
+                        "data": {
+                            "account_id": "USER_ACCOUNT_ID_1",
+                            "created_at": "2018-06-02T08:40:01Z"
+                        },
+                        "id": {
+                            "label": "oauth2",
+                            "provider": "FOXFORD_NAMESPACE_ID",
+                            "uid": "FOXFORD_USER_1_ID"
+                        }
+                    }
+                ],
+                "id": "qwerty"
+            }"#;
+            let resp_json = resp_template
+                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+                .replace("FOXFORD_USER_1_ID", &FOXFORD_USER_1_ID.to_string())
+                .replace("USER_ACCOUNT_ID_1", &USER_ACCOUNT_ID_1.to_string());
+            assert_eq!(body, shared::strip_json(&resp_json));
+        }
+
+        {
+            let payload = json!({
+                "jsonrpc": "2.0",
+                "method": "identity.list",
+                "params": [{
+                    "filter": {
+                        "provider": *FOXFORD_NAMESPACE_ID,
+                    },
+                    "offset": 1,
+                }],
+                "id": "qwerty"
+            });
+            let req = shared::build_auth_request(
+                &srv,
+                serde_json::to_string(&payload).unwrap(),
+                Some(*FOXFORD_ACCOUNT_ID),
+            );
+            let resp = srv.execute(req.send()).unwrap();
+            let body = srv.execute(resp.body()).unwrap();
+            let resp_template = r#"{
+                "jsonrpc": "2.0",
+                "result": [
+                    {
+                        "data": {
+                            "account_id": "USER_ACCOUNT_ID_2",
+                            "created_at": "2018-06-02T08:40:02Z"
+                        },
+                        "id": {
+                            "label": "oauth2",
+                            "provider": "FOXFORD_NAMESPACE_ID",
+                            "uid": "FOXFORD_USER_2_ID"
+                        }
+                    }
+                ],
+                "id": "qwerty"
+            }"#;
+            let resp_json = resp_template
+                .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+                .replace("FOXFORD_USER_2_ID", &FOXFORD_USER_2_ID.to_string())
+                .replace("USER_ACCOUNT_ID_2", &USER_ACCOUNT_ID_2.to_string());
+            assert_eq!(body, shared::strip_json(&resp_json));
+        }
+    }
+
+    #[test]
+    fn cannot_paginate_more_than_configured() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": "identity.list",
+            "params": [{
+                "filter": {
+                    "provider": *FOXFORD_NAMESPACE_ID,
+                },
+                "limit": 200
+            }],
+            "id": "qwerty"
+        });
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&payload).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        assert_eq!(body, *shared::api::BAD_REQUEST);
+    }
 }
 
 mod with_user {
