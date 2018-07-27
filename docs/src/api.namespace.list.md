@@ -11,6 +11,14 @@ namespace.list
 Name   | Type   | Default    | Description
 ------ | ------ | ---------- | ------------------
 filter | object | _required_ | -
+limit  | int    | see config | -
+offset | int    | 0          | -
+
+#### Filter
+
+Name        | Type   | Default    | Description
+----------- | ------ | ---------- | ------------------
+account_id  | uuid   | _required_ | -
 
 ### Example
 
@@ -23,7 +31,9 @@ filter | object | _required_ | -
     "params": [{
         "filter": {
             "account_id": "25a0c367-756a-42e1-ac5a-e7a2b6b64420" 
-        }
+        },
+        "limit": 25,
+        "offset": 0
     }],
     "id": "qwerty"
 }

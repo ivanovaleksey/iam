@@ -29,9 +29,8 @@ fn call(conn: &PgConnection, ids: &[Uuid]) -> QueryResult<Vec<Namespace>> {
 
     let query = namespace::table
         .filter(namespace::deleted_at.is_null())
-        .filter(namespace::id.eq(any(ids)));
+        .filter(namespace::id.eq(any(ids)))
+        .order(namespace::created_at.asc());
 
-    let items = query.load(conn)?;
-
-    Ok(items)
+    query.load(conn)
 }

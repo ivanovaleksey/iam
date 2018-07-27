@@ -7,8 +7,8 @@ use actors::DbExecutor;
 #[derive(Debug)]
 pub struct ObjectList {
     pub objects: Vec<AbacAttribute>,
-    pub offset: i32,
-    pub limit: i32,
+    pub limit: u16,
+    pub offset: u16,
 }
 
 impl Message for ObjectList {
@@ -27,5 +27,11 @@ impl Handler<ObjectList> for DbExecutor {
 fn call(conn: &PgConnection, msg: &ObjectList) -> QueryResult<Vec<AbacAttribute>> {
     use abac::functions::abac_object_list;
 
-    diesel::select(abac_object_list(&msg.objects, &msg.offset, &msg.limit)).get_results(conn)
+    let query = diesel::select(abac_object_list(
+        &msg.objects,
+        i32::from(msg.offset),
+        i32::from(msg.limit),
+    ));
+
+    query.get_results(conn)
 }
