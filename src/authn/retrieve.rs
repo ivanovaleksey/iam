@@ -126,11 +126,10 @@ pub fn call(
             }
         })
         .and_then(|(expires_in, identity, refresh_token, namespace)| {
-            let payload =
-                jwt::AccessToken::new(namespace.label.clone(), expires_in, identity.account_id);
+            let payload = jwt::AccessToken::new(&namespace.label, expires_in, identity.account_id);
             let access_token = jwt::AccessToken::encode(payload)?;
 
-            let payload = jwt::RefreshToken::new(namespace.label, identity.account_id);
+            let payload = jwt::RefreshToken::new(&namespace.label, identity.account_id);
             let key = refresh_token
                 .keys
                 .get(0)

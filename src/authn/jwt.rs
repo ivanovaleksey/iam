@@ -5,6 +5,8 @@ use jsonwebtoken;
 use serde_json;
 use uuid::Uuid;
 
+use std::borrow::Cow;
+
 use authn::AuthKey;
 
 const ISSUER: &str = "iam.netology-group.services";
@@ -34,9 +36,9 @@ impl<'a> RawToken<'a> {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct AccessToken {
-    pub aud: String,
-    pub iss: String,
+pub struct AccessToken<'a> {
+    pub aud: Cow<'a, str>,
+    pub iss: Cow<'a, str>,
     #[serde(with = "ts_seconds")]
     pub exp: NaiveDateTime,
     #[serde(with = "ts_seconds")]
@@ -44,26 +46,26 @@ pub struct AccessToken {
     pub sub: Uuid,
 }
 
-impl AccessToken {
-    pub fn new(aud: String, exp: u16, sub: Uuid) -> Self {
+impl<'a> AccessToken<'a> {
+    pub fn new(aud: &'a str, exp: u16, sub: Uuid) -> Self {
         let now = Utc::now().timestamp();
 
         AccessToken {
-            aud,
-            iss: ISSUER.to_owned(),
+            aud: aud.into(),
+            iss: ISSUER.into(),
             exp: NaiveDateTime::from_timestamp(now + i64::from(exp), 0),
             iat: NaiveDateTime::from_timestamp(now, 0),
             sub,
         }
     }
 
-    pub fn decode(token: &RawToken) -> Result<AccessToken, DecodeError> {
+    pub fn decode(token: &RawToken) -> Result<AccessToken<'a>, DecodeError> {
         let key = token
             .public_key()
             .ok_or_else(|| DecodeError::UnknownIssuer)?;
 
         if let Ok((_header, payload)) =
-            frank_jwt::decode(&token.value.to_owned(), &key, frank_jwt::Algorithm::ES256)
+            frank_jwt::decode(&token.value, &key, frank_jwt::Algorithm::ES256)
         {
             serde_json::from_value(payload).map_err(|_| DecodeError::InvalidPayload)
         } else {
@@ -89,27 +91,27 @@ impl AccessToken {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RefreshToken {
-    pub aud: String,
-    pub iss: String,
+pub struct RefreshToken<'a> {
+    pub aud: Cow<'a, str>,
+    pub iss: Cow<'a, str>,
     #[serde(with = "ts_seconds")]
     pub iat: NaiveDateTime,
     pub sub: Uuid,
 }
 
-impl RefreshToken {
-    pub fn new(aud: String, sub: Uuid) -> Self {
+impl<'a> RefreshToken<'a> {
+    pub fn new(aud: &'a str, sub: Uuid) -> Self {
         let now = Utc::now().timestamp();
 
         RefreshToken {
-            aud,
-            iss: ISSUER.to_owned(),
+            aud: aud.into(),
+            iss: ISSUER.into(),
             iat: NaiveDateTime::from_timestamp(now, 0),
             sub,
         }
     }
 
-    pub fn decode(token: &str, key: &[u8]) -> Result<RefreshToken, ()> {
+    pub fn decode(token: &str, key: &[u8]) -> Result<RefreshToken<'a>, ()> {
         use jsonwebtoken::{Algorithm, Validation};
         jsonwebtoken::decode(token, key, &Validation::new(Algorithm::HS256))
             .map(|data| data.claims)

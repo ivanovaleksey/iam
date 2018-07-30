@@ -90,7 +90,7 @@ pub fn call(
             }
         })
         .and_then(|(old_token, new_token)| {
-            let payload = jwt::RefreshToken::new(old_token.aud, old_token.sub);
+            let payload = jwt::RefreshToken::new(&old_token.aud, old_token.sub);
 
             let key = new_token
                 .keys

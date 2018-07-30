@@ -105,7 +105,7 @@ pub fn call(
             Ok((expires_in, token))
         })
         .and_then(|(expires_in, refresh_token)| {
-            let payload = jwt::AccessToken::new(refresh_token.aud, expires_in, refresh_token.sub);
+            let payload = jwt::AccessToken::new(&refresh_token.aud, expires_in, refresh_token.sub);
             let access_token = jwt::AccessToken::encode(payload)?;
 
             Ok(HttpResponse::Ok().json(Response::new(&access_token, expires_in)))
