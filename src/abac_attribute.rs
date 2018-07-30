@@ -34,7 +34,7 @@ impl fmt::Display for UriKind {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum CollectionKind {
     Account,
     Identity,
@@ -72,7 +72,7 @@ impl fmt::Display for CollectionKind {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum OperationKind {
     Create,
     Read,

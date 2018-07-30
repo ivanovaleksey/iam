@@ -1,10 +1,8 @@
 use abac::{models::AbacPolicy, types::AbacAttribute};
-use futures::future::{self, Future};
+use futures::{future, Future};
 use uuid::Uuid;
 
-use actors::db::{abac_policy, authz::Authz};
 use rpc;
-use settings;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
@@ -34,28 +32,18 @@ impl From<AbacPolicy> for Response {
 }
 
 pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
-    let subject = rpc::forbid_anonymous(meta.subject);
-    future::result(subject)
+    use abac_attribute::{CollectionKind, OperationKind};
+    use actors::db::abac_policy;
+    use rpc::authorize_collection;
+
+    let collection = CollectionKind::AbacPolicy;
+    let operation = OperationKind::Create;
+
+    future::result(rpc::forbid_anonymous(meta.subject))
         .and_then({
             let db = meta.db.clone().unwrap();
-            let namespace_id = req.namespace_id;
-            move |subject_id| {
-                use abac_attribute::{CollectionKind, OperationKind, UriKind};
-
-                let iam_namespace_id = settings::iam_namespace_id();
-
-                let msg = Authz {
-                    namespace_ids: vec![iam_namespace_id],
-                    subject: vec![AbacAttribute::new(
-                        iam_namespace_id,
-                        UriKind::Account(subject_id),
-                    )],
-                    object: vec![AbacAttribute::new(namespace_id, CollectionKind::AbacPolicy)],
-                    action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Create)],
-                };
-
-                db.send(msg).from_err().and_then(rpc::ensure_authorized)
-            }
+            let ns_id = req.namespace_id;
+            move |subject_id| authorize_collection(&db, ns_id, subject_id, collection, operation)
         })
         .and_then({
             let db = meta.db.unwrap();

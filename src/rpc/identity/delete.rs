@@ -98,7 +98,7 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                 db.send(msg)
                     .from_err()
                     .and_then(|res| {
-                        let items = res?;
+                        let items = res.map_err(rpc::error::Error::Db)?;
                         Ok(items.len())
                     })
                     .and_then(move |count| {

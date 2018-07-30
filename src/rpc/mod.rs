@@ -1,3 +1,4 @@
+use abac::types::AbacAttribute;
 use actix::Addr;
 use actix_web::{self, HttpMessage, HttpRequest, HttpResponse};
 use diesel::QueryResult;
@@ -9,7 +10,8 @@ use uuid::{self, Uuid};
 
 use std::{fmt, str};
 
-use actors::DbExecutor;
+use abac_attribute::{CollectionKind, OperationKind, UriKind};
+use actors::{db::authz::Authz, DbExecutor};
 use authn;
 use rpc::abac_action_attr::Rpc as AbacActionRpc;
 use rpc::abac_object_attr::Rpc as AbacObjectRpc;
@@ -286,4 +288,29 @@ fn reject_call(call: &jsonrpc::Call) -> impl Future<Item = Option<jsonrpc::Outpu
     };
 
     future::ok(Some(output))
+}
+
+fn authorize_collection(
+    db: &Addr<DbExecutor>,
+    ns_id: Uuid,
+    subject_id: Uuid,
+    collection: CollectionKind,
+    operation: OperationKind,
+) -> impl Future<Item = (), Error = Error> {
+    use settings;
+    let iam_namespace_id = settings::iam_namespace_id();
+
+    let subject = AbacAttribute::new(iam_namespace_id, UriKind::Account(subject_id));
+    let ns = AbacAttribute::new(iam_namespace_id, UriKind::Namespace(ns_id));
+    let collection = AbacAttribute::new(iam_namespace_id, collection);
+    let action = AbacAttribute::new(iam_namespace_id, operation);
+
+    let msg = Authz {
+        namespace_ids: vec![iam_namespace_id],
+        subject: vec![subject],
+        object: vec![ns, collection],
+        action: vec![action],
+    };
+
+    db.send(msg).from_err().and_then(ensure_authorized)
 }

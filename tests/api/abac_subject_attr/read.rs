@@ -2,10 +2,11 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacSubject};
-use abac::schema::{abac_object, abac_subject};
+use abac::models::{AbacPolicy, AbacSubject};
+use abac::schema::{abac_policy, abac_subject};
 use abac::types::AbacAttribute;
 
+use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, create_operations, AccountKind, NamespaceKind};
@@ -58,22 +59,6 @@ fn before_each_1(conn: &PgConnection) -> ((Account, Namespace), (Account, Namesp
     let netology_account = create_account(conn, AccountKind::Netology);
     let _netology_namespace = create_namespace(conn, NamespaceKind::Netology(netology_account.id));
 
-    diesel::insert_into(abac_object::table)
-        .values(AbacObject {
-            inbound: AbacAttribute {
-                namespace_id: foxford_namespace.id,
-                key: "type".to_owned(),
-                value: "abac_subject".to_owned(),
-            },
-            outbound: AbacAttribute {
-                namespace_id: iam_namespace.id,
-                key: "uri".to_owned(),
-                value: format!("namespace/{}", foxford_namespace.id),
-            },
-        })
-        .execute(conn)
-        .unwrap();
-
     (
         (iam_account, iam_namespace),
         (foxford_account, foxford_namespace),
@@ -87,48 +72,151 @@ mod with_existing_record {
     #[must_use]
     fn before_each_2(conn: &PgConnection) -> AbacSubject {
         let _ = before_each_1(conn);
-        create_record(conn)
+
+        diesel::insert_into(abac_subject::table)
+            .values(build_record())
+            .get_result(conn)
+            .unwrap()
     }
 
     mod with_client {
         use super::*;
 
-        #[test]
-        fn can_read_own_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod with_own_user {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let _ = before_each_2(conn);
+                create_user_identity(conn);
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *EXPECTED);
+            #[test]
+            fn can_read_own_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
+            }
+
+            #[test]
+            fn cannot_read_alien_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*NETOLOGY_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+            }
+
+            #[test]
+            fn can_read_alien_record_when_permission_granted() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                    grant_permission(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*NETOLOGY_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
+            }
         }
 
-        #[test]
-        fn cannot_read_alien_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod with_alien_user {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let _ = before_each_2(conn);
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
+            #[test]
+            fn can_read_own_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
+            }
+
+            #[test]
+            fn can_read_alien_record_when_permission_granted() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                    grant_permission(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*NETOLOGY_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *EXPECTED);
+            }
+        }
+
+        fn grant_permission(conn: &PgConnection) {
+            diesel::insert_into(abac_policy::table)
+                .values(AbacPolicy {
+                    subject: vec![AbacAttribute::new(
+                        *IAM_NAMESPACE_ID,
+                        UriKind::Account(*NETOLOGY_ACCOUNT_ID),
+                    )],
+                    object: vec![
+                        AbacAttribute::new(
+                            *IAM_NAMESPACE_ID,
+                            UriKind::Namespace(*FOXFORD_NAMESPACE_ID),
+                        ),
+                        AbacAttribute::new(*IAM_NAMESPACE_ID, CollectionKind::AbacSubject),
+                    ],
+                    action: vec![AbacAttribute::new(*IAM_NAMESPACE_ID, OperationKind::Read)],
+                    namespace_id: *IAM_NAMESPACE_ID,
+                })
+                .execute(conn)
+                .unwrap();
         }
     }
 
@@ -161,42 +249,80 @@ mod without_existing_record {
     mod with_client {
         use super::*;
 
-        #[test]
-        fn can_read_own_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod with_own_user {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let _ = before_each_2(conn);
+                create_user_identity(conn);
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*FOXFORD_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::NOT_FOUND);
+            #[test]
+            fn can_read_own_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::NOT_FOUND);
+            }
+
+            #[test]
+            fn cannot_read_alien_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*NETOLOGY_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::FORBIDDEN);
+            }
         }
 
-        #[test]
-        fn cannot_read_alien_record() {
-            let shared::Server { mut srv, pool } = shared::build_server();
+        mod with_alien_user {
+            use super::*;
 
-            {
-                let conn = get_conn!(pool);
-                let _ = before_each_2(&conn);
+            #[must_use]
+            fn before_each_3(conn: &PgConnection) {
+                let _ = before_each_2(conn);
             }
 
-            let req = shared::build_auth_request(
-                &srv,
-                serde_json::to_string(&build_request()).unwrap(),
-                Some(*NETOLOGY_ACCOUNT_ID),
-            );
-            let resp = srv.execute(req.send()).unwrap();
-            let body = srv.execute(resp.body()).unwrap();
-            assert_eq!(body, *shared::api::FORBIDDEN);
+            #[test]
+            fn can_read_own_record() {
+                let shared::Server { mut srv, pool } = shared::build_server();
+
+                {
+                    let conn = get_conn!(pool);
+                    let _ = before_each_3(&conn);
+                }
+
+                let req = shared::build_auth_request(
+                    &srv,
+                    serde_json::to_string(&build_request()).unwrap(),
+                    Some(*FOXFORD_ACCOUNT_ID),
+                );
+                let resp = srv.execute(req.send()).unwrap();
+                let body = srv.execute(resp.body()).unwrap();
+                assert_eq!(body, *shared::api::NOT_FOUND);
+            }
         }
     }
 
@@ -218,11 +344,12 @@ mod without_existing_record {
 }
 
 fn build_request() -> serde_json::Value {
-    let subject = build_record();
+    let record = build_record();
+
     json!({
         "jsonrpc": "2.0",
         "method": "abac_subject_attr.read",
-        "params": [subject],
+        "params": [record],
         "id": "qwerty"
     })
 }
@@ -242,9 +369,19 @@ fn build_record() -> AbacSubject {
     }
 }
 
-fn create_record(conn: &PgConnection) -> AbacSubject {
-    diesel::insert_into(abac_subject::table)
-        .values(build_record())
-        .get_result(conn)
-        .unwrap()
+fn create_user_identity(conn: &PgConnection) {
+    use iam::models::NewIdentity;
+    use iam::schema::identity;
+
+    let user_account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID));
+
+    diesel::insert_into(identity::table)
+        .values(NewIdentity {
+            provider: *FOXFORD_NAMESPACE_ID,
+            label: "oauth2".to_owned(),
+            uid: Uuid::new_v4().to_string(),
+            account_id: user_account.id,
+        })
+        .execute(conn)
+        .unwrap();
 }

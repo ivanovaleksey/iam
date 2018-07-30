@@ -94,6 +94,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
             "abac_subject",
             "abac_object",
             "abac_action",
+            "abac_policy",
         ].iter()
             .map(|collection| AbacObject {
                 inbound: AbacAttribute {
