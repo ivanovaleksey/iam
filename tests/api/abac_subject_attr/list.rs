@@ -90,6 +90,30 @@ mod with_client {
                         "namespace_id": "FOXFORD_NAMESPACE_ID",
                         "value": "user"
                     }
+                },
+                {
+                    "inbound": {
+                        "key": "uri",
+                        "namespace_id": "IAM_NAMESPACE_ID",
+                        "value": "account/FOXFORD_USER_ID_1"
+                    },
+                    "outbound": {
+                        "key": "customer",
+                        "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "value": "webinar/1"
+                    }
+                },
+                {
+                    "inbound": {
+                        "key": "role",
+                        "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "value": "user"
+                    },
+                    "outbound": {
+                        "key": "role",
+                        "namespace_id": "IAM_NAMESPACE_ID",
+                        "value": "member"
+                    }
                 }
             ],
             "id": "qwerty"
@@ -224,6 +248,59 @@ mod with_client {
             .replace("FOXFORD_USER_ID_1", &FOXFORD_USER_ID_1.to_string());
         assert_eq!(body, shared::strip_json(&resp_json));
     }
+
+    #[test]
+    fn can_filter_by_key_both_inbound_and_outbound() {
+        let shared::Server { mut srv, pool } = shared::build_server();
+
+        {
+            let conn = get_conn!(pool);
+            let _ = before_each_1(&conn);
+        }
+
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": "abac_subject_attr.list",
+            "params": [{
+                "filter": {
+                    "namespace_ids": vec![*FOXFORD_NAMESPACE_ID],
+                    "key": "customer",
+                }
+            }],
+            "id": "qwerty"
+        });
+
+        let req = shared::build_auth_request(
+            &srv,
+            serde_json::to_string(&payload).unwrap(),
+            Some(*FOXFORD_ACCOUNT_ID),
+        );
+        let resp = srv.execute(req.send()).unwrap();
+        let body = srv.execute(resp.body()).unwrap();
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "inbound": {
+                        "key": "uri",
+                        "namespace_id": "IAM_NAMESPACE_ID",
+                        "value": "account/FOXFORD_USER_ID_1"
+                    },
+                    "outbound": {
+                        "key": "customer",
+                        "namespace_id": "FOXFORD_NAMESPACE_ID",
+                        "value": "webinar/1"
+                    }
+                }
+            ],
+            "id": "qwerty"
+        }"#;
+        let resp_json = resp_template
+            .replace("FOXFORD_NAMESPACE_ID", &FOXFORD_NAMESPACE_ID.to_string())
+            .replace("FOXFORD_USER_ID_1", &FOXFORD_USER_ID_1.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
+    }
 }
 
 #[test]
@@ -294,6 +371,30 @@ fn create_records(conn: &PgConnection) {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "role".to_owned(),
                     value: "user".to_owned(),
+                },
+            },
+            AbacSubject {
+                inbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "uri".to_owned(),
+                    value: format!("account/{}", *FOXFORD_USER_ID_1),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: *FOXFORD_NAMESPACE_ID,
+                    key: "customer".to_owned(),
+                    value: "webinar/1".to_owned(),
+                },
+            },
+            AbacSubject {
+                inbound: AbacAttribute {
+                    namespace_id: *FOXFORD_NAMESPACE_ID,
+                    key: "role".to_owned(),
+                    value: "user".to_owned(),
+                },
+                outbound: AbacAttribute {
+                    namespace_id: *IAM_NAMESPACE_ID,
+                    key: "role".to_owned(),
+                    value: "member".to_owned(),
                 },
             },
         ])

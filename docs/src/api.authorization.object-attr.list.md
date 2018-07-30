@@ -12,6 +12,13 @@ Name   | Type   | Default    | Description
 -------| ------ | ---------- | ------------------
 filter | object | _required_ | -
 
+#### Filter
+
+Name          | Type   | Default    | Description
+------------- | ------ | ---------- | ------------------
+namespace_ids | [uuid] | _required_ | -
+key           | string | -          | -
+
 ### Example
 
 #### Request

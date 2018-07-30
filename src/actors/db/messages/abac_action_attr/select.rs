@@ -4,11 +4,11 @@ use diesel::prelude::*;
 use uuid::Uuid;
 
 use actors::DbExecutor;
-use rpc::abac_action_attr::list;
 
 #[derive(Debug)]
 pub struct Select {
     pub namespace_ids: Vec<Uuid>,
+    pub key: Option<String>,
 }
 
 impl Message for Select {
@@ -20,25 +20,33 @@ impl Handler<Select> for DbExecutor {
 
     fn handle(&mut self, msg: Select, _ctx: &mut Self::Context) -> Self::Result {
         let conn = &self.0.get().unwrap();
-        call(conn, msg)
+        call(conn, &msg)
     }
 }
 
-impl From<list::Request> for Select {
-    fn from(req: list::Request) -> Self {
-        Select {
-            namespace_ids: req.filter.namespace_ids,
-        }
-    }
-}
-
-fn call(conn: &PgConnection, msg: Select) -> QueryResult<Vec<AbacAction>> {
+fn call(conn: &PgConnection, msg: &Select) -> QueryResult<Vec<AbacAction>> {
     use abac::dsl::*;
-    use abac::schema::abac_action::dsl::*;
+    use abac::schema::abac_action;
     use diesel::dsl::any;
 
-    let query = abac_action.filter(outbound.namespace_id().eq(any(msg.namespace_ids)));
-    let items = query.load(conn)?;
+    let mut query = abac_action::table
+        .filter(
+            abac_action::inbound
+                .namespace_id()
+                .eq(any(&msg.namespace_ids)),
+        )
+        .or_filter(
+            abac_action::outbound
+                .namespace_id()
+                .eq(any(&msg.namespace_ids)),
+        )
+        .into_boxed();
 
-    Ok(items)
+    if let Some(ref key) = msg.key {
+        query = query
+            .filter(abac_action::inbound.key().eq(key))
+            .or_filter(abac_action::outbound.key().eq(key));
+    }
+
+    query.load(conn)
 }

@@ -4,11 +4,10 @@ use actix_web::{self, HttpMessage, HttpRequest, HttpResponse};
 use diesel::QueryResult;
 use futures::future::{self, Either, Future};
 use jsonrpc::{self, MetaIoHandler, Metadata};
-use serde::de::{self, Deserialize, Deserializer};
 use serde_json;
-use uuid::{self, Uuid};
+use uuid::Uuid;
 
-use std::{fmt, str};
+use std::fmt;
 
 use abac_attribute::{CollectionKind, OperationKind, UriKind};
 use actors::{db::authz::Authz, DbExecutor};
@@ -92,67 +91,17 @@ pub struct Response<Id, Data> {
     pub data: Data,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ListRequest<F>
-where
-    F: str::FromStr,
-    F::Err: fmt::Display,
-{
-    #[serde(rename = "fq")]
-    pub filter: ListRequestFilter<F>,
+pub struct ListRequest {
+    pub filter: ListRequestFilter,
 }
 
-impl<F> ListRequest<F>
-where
-    F: str::FromStr,
-    F::Err: fmt::Display,
-{
-    pub fn new(filter: F) -> Self {
-        ListRequest {
-            filter: ListRequestFilter(filter),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ListRequestFilter<F>(pub F);
-
-impl<'de, F> Deserialize<'de> for ListRequestFilter<F>
-where
-    F: str::FromStr,
-    F::Err: fmt::Display,
-{
-    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        let filter = s.parse().map_err(de::Error::custom)?;
-        let filter = ListRequestFilter(filter);
-        Ok(filter)
-    }
-}
-
-#[derive(Debug, Fail)]
-pub enum ListRequestFilterError {
-    #[fail(display = "{}", _0)]
-    Json(#[cause] serde_json::Error),
-
-    #[fail(display = "{}", _0)]
-    Uuid(#[cause] uuid::ParseError),
-}
-
-impl From<uuid::ParseError> for ListRequestFilterError {
-    fn from(e: uuid::ParseError) -> Self {
-        ListRequestFilterError::Uuid(e)
-    }
-}
-
-impl From<serde_json::Error> for ListRequestFilterError {
-    fn from(e: serde_json::Error) -> Self {
-        ListRequestFilterError::Json(e)
-    }
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ListRequestFilter {
+    pub namespace_ids: Vec<Uuid>,
+    pub key: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
