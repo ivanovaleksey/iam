@@ -1,7 +1,7 @@
 use diesel::{self, prelude::*};
 use serde_json;
 
-use abac::models::{AbacAction, AbacPolicy};
+use abac::models::{AbacPolicy, NewAbacAction};
 use abac::schema::{abac_action, abac_policy};
 use abac::AbacAttribute;
 
@@ -66,9 +66,13 @@ mod with_existing_record {
     use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> AbacAction {
+    fn before_each_2(conn: &PgConnection) {
         let _ = before_each_1(conn);
-        create_record(conn)
+
+        diesel::insert_into(abac_action::table)
+            .values(build_record())
+            .execute(conn)
+            .unwrap();
     }
 
     mod with_client {
@@ -249,8 +253,8 @@ fn build_request() -> serde_json::Value {
     })
 }
 
-fn build_record() -> AbacAction {
-    AbacAction {
+fn build_record() -> NewAbacAction {
+    NewAbacAction {
         inbound: AbacAttribute {
             namespace_id: *FOXFORD_NAMESPACE_ID,
             key: "operation".to_owned(),
@@ -262,11 +266,4 @@ fn build_record() -> AbacAction {
             value: "any".to_owned(),
         },
     }
-}
-
-fn create_record(conn: &PgConnection) -> AbacAction {
-    diesel::insert_into(abac_action::table)
-        .values(build_record())
-        .get_result(conn)
-        .unwrap()
 }

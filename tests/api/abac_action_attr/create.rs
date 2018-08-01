@@ -2,7 +2,7 @@ use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
 use serde_json;
 
-use abac::models::{AbacAction, AbacPolicy};
+use abac::models::{AbacPolicy, NewAbacAction};
 use abac::schema::{abac_action, abac_policy};
 use abac::AbacAttribute;
 
@@ -192,8 +192,8 @@ fn build_request() -> serde_json::Value {
     })
 }
 
-fn build_record() -> AbacAction {
-    AbacAction {
+fn build_record() -> NewAbacAction {
+    NewAbacAction {
         inbound: AbacAttribute {
             namespace_id: *FOXFORD_NAMESPACE_ID,
             key: "operation".to_owned(),

@@ -53,7 +53,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
 
     diesel::insert_into(abac_action::table)
         .values(vec![
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: iam_namespace.id,
                     key: "operation".to_owned(),
@@ -65,7 +65,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
                     value: "any".to_owned(),
                 },
             },
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: iam_namespace.id,
                     key: "operation".to_owned(),

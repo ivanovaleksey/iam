@@ -3,7 +3,7 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacAction, AbacPolicy};
+use abac::models::{AbacPolicy, NewAbacAction};
 use abac::schema::{abac_action, abac_policy};
 use abac::AbacAttribute;
 
@@ -367,7 +367,7 @@ fn build_request(ids: Vec<Uuid>) -> serde_json::Value {
 fn create_records(conn: &PgConnection) {
     diesel::insert_into(abac_action::table)
         .values(vec![
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "operation".to_owned(),
@@ -379,7 +379,7 @@ fn create_records(conn: &PgConnection) {
                     value: "any".to_owned(),
                 },
             },
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "operation".to_owned(),
@@ -391,7 +391,7 @@ fn create_records(conn: &PgConnection) {
                     value: "any".to_owned(),
                 },
             },
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: *NETOLOGY_NAMESPACE_ID,
                     key: "operation".to_owned(),
@@ -403,7 +403,7 @@ fn create_records(conn: &PgConnection) {
                     value: "any".to_owned(),
                 },
             },
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "action".to_owned(),
