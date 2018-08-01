@@ -3,9 +3,8 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacPolicy};
-use abac::schema::{abac_object, abac_policy};
-use abac::AbacAttribute;
+use abac::prelude::*;
+use abac::schema::*;
 
 use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
@@ -204,7 +203,7 @@ mod with_client {
             let _ = before_each_1(&conn);
 
             diesel::insert_into(abac_policy::table)
-                .values(AbacPolicy {
+                .values(NewAbacPolicy {
                     subject: vec![AbacAttribute::new(
                         *IAM_NAMESPACE_ID,
                         UriKind::Account(*FOXFORD_ACCOUNT_ID),
@@ -379,7 +378,7 @@ fn build_request(ids: Vec<Uuid>) -> serde_json::Value {
 fn create_records(conn: &PgConnection) {
     diesel::insert_into(abac_object::table)
         .values(vec![
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -391,7 +390,7 @@ fn create_records(conn: &PgConnection) {
                     value: "webinar".to_owned(),
                 },
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -403,7 +402,7 @@ fn create_records(conn: &PgConnection) {
                     value: "webinar".to_owned(),
                 },
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: *NETOLOGY_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -415,7 +414,7 @@ fn create_records(conn: &PgConnection) {
                     value: "webinar".to_owned(),
                 },
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: *STORAGE_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -427,7 +426,7 @@ fn create_records(conn: &PgConnection) {
                     value: "webinar/1".to_owned(),
                 },
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "uri".to_owned(),

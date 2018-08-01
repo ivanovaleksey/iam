@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, schema::abac_object, AbacAttribute};
+use abac::{models::NewAbacObject, schema::abac_object, AbacAttribute};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 
@@ -90,18 +90,18 @@ pub fn insert_identity_links(conn: &PgConnection, identity: &Identity) -> QueryR
     let identity_uri = UriKind::Identity(pk);
     diesel::insert_into(abac_object::table)
         .values(vec![
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, identity_uri.clone()),
                 outbound: AbacAttribute::new(iam_namespace_id, CollectionKind::Identity),
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, identity_uri.clone()),
                 outbound: AbacAttribute::new(
                     iam_namespace_id,
                     UriKind::Account(identity.account_id),
                 ),
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, identity_uri),
                 outbound: AbacAttribute::new(
                     iam_namespace_id,

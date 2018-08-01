@@ -3,9 +3,8 @@ use diesel;
 use diesel::prelude::*;
 use serde_json;
 
-use abac::models::prelude::*;
+use abac::prelude::*;
 use abac::schema::*;
-use abac::AbacAttribute;
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, AccountKind, NamespaceKind};
@@ -20,7 +19,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
     let iam_namespace = create_namespace(conn, NamespaceKind::Iam(iam_account.id));
 
     diesel::insert_into(abac_subject::table)
-        .values(AbacSubject {
+        .values(NewAbacSubject {
             inbound: AbacAttribute {
                 namespace_id: iam_namespace.id,
                 key: "uri".to_owned(),
@@ -36,7 +35,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
         .unwrap();
 
     diesel::insert_into(abac_object::table)
-        .values(AbacObject {
+        .values(NewAbacObject {
             inbound: AbacAttribute {
                 namespace_id: iam_namespace.id,
                 key: "uri".to_owned(),
@@ -53,7 +52,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
 
     diesel::insert_into(abac_action::table)
         .values(vec![
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: iam_namespace.id,
                     key: "operation".to_owned(),
@@ -65,7 +64,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
                     value: "any".to_owned(),
                 },
             },
-            AbacAction {
+            NewAbacAction {
                 inbound: AbacAttribute {
                     namespace_id: iam_namespace.id,
                     key: "operation".to_owned(),
@@ -93,7 +92,7 @@ fn with_permission() {
         let (_account, namespace) = before_each(&conn);
 
         diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
+            .values(NewAbacPolicy {
                 subject: vec![AbacAttribute {
                     namespace_id: namespace.id,
                     key: "role".to_owned(),

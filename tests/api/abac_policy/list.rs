@@ -1,12 +1,10 @@
 use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
-use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacPolicy;
-use abac::schema::abac_policy;
-use abac::AbacAttribute;
+use abac::prelude::*;
+use abac::schema::*;
 
 use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
@@ -66,41 +64,117 @@ mod with_admin {
         );
         let resp = srv.execute(req.send()).unwrap();
         let body = srv.execute(resp.body()).unwrap();
+        let resp_template = r#"{
+            "jsonrpc": "2.0",
+            "result": [
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "IAM_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/IAM_ACCOUNT_ID"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/IAM_ACCOUNT_ID"
+                        }
+                    ]
+                },
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "IAM_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/FOXFORD_ACCOUNT_ID"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/FOXFORD_ACCOUNT_ID"
+                        }
+                    ]
+                },
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "IAM_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/NETOLOGY_ACCOUNT_ID"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/NETOLOGY_ACCOUNT_ID"
+                        }
+                    ]
+                },
+                {
+                    "action": [
+                        {
+                            "key": "operation",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "any"
+                        }
+                    ],
+                    "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                    "object": [
+                        {
+                            "key": "type",
+                            "namespace_id": "NETOLOGY_NAMESPACE_ID",
+                            "value": "abac_policy"
+                        }
+                    ],
+                    "subject": [
+                        {
+                            "key": "uri",
+                            "namespace_id": "IAM_NAMESPACE_ID",
+                            "value": "account/USER_ACCOUNT_ID_2"
+                        }
+                    ]
+                }
+            ],
+            "id": "qwerty"
+        }"#;
 
-        if let Ok(resp) = serde_json::from_slice::<jsonrpc::Success>(&body) {
-            let mut policies: Vec<AbacPolicy> = serde_json::from_value(resp.result).unwrap();
-
-            for policy in iam_policies() {
-                let index = policies.iter().position(|p| *p == policy).unwrap();
-                policies.remove(index);
-            }
-
-            let policy = AbacPolicy {
-                namespace_id: *NETOLOGY_NAMESPACE_ID,
-                subject: vec![AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "uri".to_owned(),
-                    value: format!("account/{}", *USER_ACCOUNT_ID_2),
-                }],
-                object: vec![AbacAttribute {
-                    namespace_id: *NETOLOGY_NAMESPACE_ID,
-                    key: "type".to_owned(),
-                    value: "abac_policy".to_owned(),
-                }],
-                action: vec![AbacAttribute {
-                    namespace_id: *IAM_NAMESPACE_ID,
-                    key: "operation".to_owned(),
-                    value: "any".to_owned(),
-                }],
-            };
-
-            let index = policies.iter().position(|p| *p == policy).unwrap();
-            policies.remove(index);
-
-            assert!(policies.is_empty());
-        } else {
-            panic!(body);
-        }
+        let resp_json = resp_template
+            .replace("USER_ACCOUNT_ID_2", &USER_ACCOUNT_ID_2.to_string())
+            .replace("FOXFORD_ACCOUNT_ID", &FOXFORD_ACCOUNT_ID.to_string())
+            .replace("NETOLOGY_ACCOUNT_ID", &NETOLOGY_ACCOUNT_ID.to_string())
+            .replace("NETOLOGY_NAMESPACE_ID", &NETOLOGY_NAMESPACE_ID.to_string())
+            .replace("IAM_ACCOUNT_ID", &IAM_ACCOUNT_ID.to_string())
+            .replace("IAM_NAMESPACE_ID", &IAM_NAMESPACE_ID.to_string());
+        assert_eq!(body, shared::strip_json(&resp_json));
     }
 }
 
@@ -269,7 +343,7 @@ mod with_client {
             let _ = before_each_1(&conn);
 
             diesel::insert_into(abac_policy::table)
-                .values(AbacPolicy {
+                .values(NewAbacPolicy {
                     subject: vec![AbacAttribute::new(
                         *IAM_NAMESPACE_ID,
                         UriKind::Account(*FOXFORD_ACCOUNT_ID),
@@ -364,69 +438,10 @@ fn build_request(ids: &[Uuid]) -> serde_json::Value {
     })
 }
 
-fn iam_policies() -> Vec<AbacPolicy> {
-    vec![
-        AbacPolicy {
-            subject: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", *IAM_ACCOUNT_ID),
-            }],
-            object: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", *IAM_ACCOUNT_ID),
-            }],
-            action: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "operation".to_owned(),
-                value: "any".to_owned(),
-            }],
-            namespace_id: *IAM_NAMESPACE_ID,
-        },
-        AbacPolicy {
-            subject: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", *FOXFORD_ACCOUNT_ID),
-            }],
-            object: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", *FOXFORD_ACCOUNT_ID),
-            }],
-            action: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "operation".to_owned(),
-                value: "any".to_owned(),
-            }],
-            namespace_id: *IAM_NAMESPACE_ID,
-        },
-        AbacPolicy {
-            subject: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", *NETOLOGY_ACCOUNT_ID),
-            }],
-            object: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "uri".to_owned(),
-                value: format!("account/{}", *NETOLOGY_ACCOUNT_ID),
-            }],
-            action: vec![AbacAttribute {
-                namespace_id: *IAM_NAMESPACE_ID,
-                key: "operation".to_owned(),
-                value: "any".to_owned(),
-            }],
-            namespace_id: *IAM_NAMESPACE_ID,
-        },
-    ]
-}
-
 fn create_records(conn: &PgConnection) {
     diesel::insert_into(abac_policy::table)
         .values(vec![
-            AbacPolicy {
+            NewAbacPolicy {
                 subject: vec![AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -444,7 +459,7 @@ fn create_records(conn: &PgConnection) {
                 }],
                 namespace_id: *FOXFORD_NAMESPACE_ID,
             },
-            AbacPolicy {
+            NewAbacPolicy {
                 subject: vec![AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -462,7 +477,7 @@ fn create_records(conn: &PgConnection) {
                 }],
                 namespace_id: *FOXFORD_NAMESPACE_ID,
             },
-            AbacPolicy {
+            NewAbacPolicy {
                 subject: vec![AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),

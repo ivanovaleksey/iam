@@ -1,4 +1,6 @@
-use abac::{models::AbacSubject, AbacAttribute};
+use abac::{
+    models::{AbacSubject, NewAbacSubject}, AbacAttribute,
+};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 
@@ -34,16 +36,14 @@ impl From<create::Request> for Insert {
 }
 
 fn call(conn: &PgConnection, msg: Insert) -> QueryResult<AbacSubject> {
-    use abac::schema::abac_subject::dsl::*;
+    use abac::schema::abac_subject;
 
-    let changeset = AbacSubject {
+    let changeset = NewAbacSubject {
         inbound: msg.inbound,
         outbound: msg.outbound,
     };
 
-    let subject = diesel::insert_into(abac_subject)
+    diesel::insert_into(abac_subject::table)
         .values(changeset)
-        .get_result(conn)?;
-
-    Ok(subject)
+        .get_result(conn)
 }

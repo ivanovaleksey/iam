@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, schema::abac_object, AbacAttribute};
+use abac::{models::prelude::*, AbacAttribute};
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
@@ -60,6 +60,7 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
 
 pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     use self::NamespaceKind::*;
+    use abac::schema::abac_object;
     use iam::actors::db;
     use iam::schema::namespace;
 
@@ -96,7 +97,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
             "abac_action",
             "abac_policy",
         ].iter()
-            .map(|collection| AbacObject {
+            .map(|collection| NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: namespace.id,
                     key: "type".to_owned(),
@@ -120,13 +121,11 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
 }
 
 pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
-    use abac::models::AbacAction;
     use abac::schema::abac_action;
-    use abac::AbacAttribute;
 
     let operations = ["create", "read", "update", "delete", "list"]
         .iter()
-        .map(|operation| AbacAction {
+        .map(|operation| NewAbacAction {
             inbound: AbacAttribute {
                 namespace_id,
                 key: "operation".to_owned(),

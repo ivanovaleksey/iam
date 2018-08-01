@@ -1,4 +1,6 @@
-use abac::{models::AbacPolicy, AbacAttribute};
+use abac::{
+    models::{AbacPolicy, NewAbacPolicy}, AbacAttribute,
+};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 use uuid::Uuid;
@@ -39,17 +41,16 @@ impl From<create::Request> for Insert {
 }
 
 fn call(conn: &PgConnection, msg: Insert) -> QueryResult<AbacPolicy> {
-    use abac::schema::abac_policy::dsl::*;
+    use abac::schema::abac_policy;
 
-    let changeset = AbacPolicy {
+    let changeset = NewAbacPolicy {
         namespace_id: msg.namespace_id,
         subject: msg.subject,
         object: msg.object,
         action: msg.action,
     };
-    let policy = diesel::insert_into(abac_policy)
-        .values(changeset)
-        .get_result(conn)?;
 
-    Ok(policy)
+    diesel::insert_into(abac_policy::table)
+        .values(changeset)
+        .get_result(conn)
 }

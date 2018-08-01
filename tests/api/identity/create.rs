@@ -6,9 +6,8 @@ use jsonrpc;
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacPolicy;
-use abac::schema::abac_policy;
-use abac::AbacAttribute;
+use abac::prelude::*;
+use abac::schema::*;
 
 use iam::models::{identity::PrimaryKey, Account, Namespace};
 use iam::schema::{account, identity};
@@ -273,7 +272,7 @@ mod with_client {
             let _ = before_each_1(&conn);
 
             diesel::insert_into(abac_policy::table)
-                .values(AbacPolicy {
+                .values(NewAbacPolicy {
                     subject: vec![AbacAttribute {
                         namespace_id: *IAM_NAMESPACE_ID,
                         key: "uri".to_owned(),
