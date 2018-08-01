@@ -2,7 +2,7 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacPolicy, AbacSubject};
+use abac::models::{AbacPolicy, NewAbacSubject};
 use abac::schema::{abac_policy, abac_subject};
 use abac::AbacAttribute;
 
@@ -70,13 +70,13 @@ mod with_existing_record {
     use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> AbacSubject {
+    fn before_each_2(conn: &PgConnection) {
         let _ = before_each_1(conn);
 
         diesel::insert_into(abac_subject::table)
             .values(build_record())
-            .get_result(conn)
-            .unwrap()
+            .execute(conn)
+            .unwrap();
     }
 
     mod with_client {
@@ -384,8 +384,8 @@ fn build_request() -> serde_json::Value {
     })
 }
 
-fn build_record() -> AbacSubject {
-    AbacSubject {
+fn build_record() -> NewAbacSubject {
+    NewAbacSubject {
         inbound: AbacAttribute {
             namespace_id: *IAM_NAMESPACE_ID,
             key: "uri".to_owned(),

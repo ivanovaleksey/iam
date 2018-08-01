@@ -3,7 +3,7 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacPolicy, AbacSubject};
+use abac::models::{AbacPolicy, NewAbacSubject};
 use abac::schema::{abac_policy, abac_subject};
 use abac::AbacAttribute;
 
@@ -150,7 +150,7 @@ mod with_client {
             let _ = create_account(&conn, AccountKind::Netology);
         }
 
-        let record = AbacSubject {
+        let record = NewAbacSubject {
             inbound: AbacAttribute {
                 namespace_id: *IAM_NAMESPACE_ID,
                 key: "uri".to_owned(),
@@ -246,7 +246,7 @@ fn anonymous_cannot_create_record() {
     }
 }
 
-fn build_request(record: Option<&AbacSubject>) -> serde_json::Value {
+fn build_request(record: Option<&NewAbacSubject>) -> serde_json::Value {
     let default = build_record();
 
     json!({
@@ -257,8 +257,8 @@ fn build_request(record: Option<&AbacSubject>) -> serde_json::Value {
     })
 }
 
-fn build_record() -> AbacSubject {
-    AbacSubject {
+fn build_record() -> NewAbacSubject {
+    NewAbacSubject {
         inbound: AbacAttribute {
             namespace_id: *IAM_NAMESPACE_ID,
             key: "uri".to_owned(),
@@ -272,7 +272,7 @@ fn build_record() -> AbacSubject {
     }
 }
 
-fn find_record(conn: &PgConnection, record: Option<AbacSubject>) -> diesel::QueryResult<usize> {
+fn find_record(conn: &PgConnection, record: Option<NewAbacSubject>) -> diesel::QueryResult<usize> {
     let record = record.or_else(|| Some(build_record())).unwrap();
 
     abac_subject::table

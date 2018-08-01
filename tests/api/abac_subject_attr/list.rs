@@ -3,7 +3,7 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacPolicy, AbacSubject};
+use abac::models::{AbacPolicy, NewAbacSubject};
 use abac::schema::{abac_policy, abac_subject};
 use abac::AbacAttribute;
 
@@ -337,7 +337,7 @@ fn build_request(ids: Vec<Uuid>) -> serde_json::Value {
 fn create_records(conn: &PgConnection) {
     diesel::insert_into(abac_subject::table)
         .values(vec![
-            AbacSubject {
+            NewAbacSubject {
                 inbound: AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -349,7 +349,7 @@ fn create_records(conn: &PgConnection) {
                     value: "user".to_owned(),
                 },
             },
-            AbacSubject {
+            NewAbacSubject {
                 inbound: AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -361,7 +361,7 @@ fn create_records(conn: &PgConnection) {
                     value: "user".to_owned(),
                 },
             },
-            AbacSubject {
+            NewAbacSubject {
                 inbound: AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -373,7 +373,7 @@ fn create_records(conn: &PgConnection) {
                     value: "user".to_owned(),
                 },
             },
-            AbacSubject {
+            NewAbacSubject {
                 inbound: AbacAttribute {
                     namespace_id: *IAM_NAMESPACE_ID,
                     key: "uri".to_owned(),
@@ -385,7 +385,7 @@ fn create_records(conn: &PgConnection) {
                     value: "webinar/1".to_owned(),
                 },
             },
-            AbacSubject {
+            NewAbacSubject {
                 inbound: AbacAttribute {
                     namespace_id: *FOXFORD_NAMESPACE_ID,
                     key: "role".to_owned(),

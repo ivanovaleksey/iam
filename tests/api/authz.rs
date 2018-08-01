@@ -20,7 +20,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
     let iam_namespace = create_namespace(conn, NamespaceKind::Iam(iam_account.id));
 
     diesel::insert_into(abac_subject::table)
-        .values(AbacSubject {
+        .values(NewAbacSubject {
             inbound: AbacAttribute {
                 namespace_id: iam_namespace.id,
                 key: "uri".to_owned(),
