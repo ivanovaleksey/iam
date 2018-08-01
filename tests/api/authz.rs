@@ -3,9 +3,8 @@ use diesel;
 use diesel::prelude::*;
 use serde_json;
 
-use abac::models::prelude::*;
+use abac::prelude::*;
 use abac::schema::*;
-use abac::AbacAttribute;
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, AccountKind, NamespaceKind};
@@ -93,7 +92,7 @@ fn with_permission() {
         let (_account, namespace) = before_each(&conn);
 
         diesel::insert_into(abac_policy::table)
-            .values(AbacPolicy {
+            .values(NewAbacPolicy {
                 subject: vec![AbacAttribute {
                     namespace_id: namespace.id,
                     key: "role".to_owned(),

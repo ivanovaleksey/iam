@@ -2,9 +2,8 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::AbacPolicy;
-use abac::schema::abac_policy;
-use abac::AbacAttribute;
+use abac::prelude::*;
+use abac::schema::*;
 
 use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
@@ -79,9 +78,13 @@ mod with_existing_record {
     use actix_web::HttpMessage;
 
     #[must_use]
-    fn before_each_2(conn: &PgConnection) -> AbacPolicy {
+    fn before_each_2(conn: &PgConnection) {
         let _ = before_each_1(conn);
-        create_record(conn)
+
+        diesel::insert_into(abac_policy::table)
+            .values(build_record())
+            .execute(conn)
+            .unwrap();
     }
 
     mod with_client {
@@ -147,7 +150,7 @@ mod with_existing_record {
                 let netology_account = create_account(&conn, AccountKind::Netology);
 
                 diesel::insert_into(abac_policy::table)
-                    .values(AbacPolicy {
+                    .values(NewAbacPolicy {
                         subject: vec![AbacAttribute::new(
                             *IAM_NAMESPACE_ID,
                             UriKind::Account(netology_account.id),
@@ -282,8 +285,8 @@ fn build_request() -> serde_json::Value {
     })
 }
 
-fn build_record() -> AbacPolicy {
-    AbacPolicy {
+fn build_record() -> NewAbacPolicy {
+    NewAbacPolicy {
         namespace_id: *FOXFORD_NAMESPACE_ID,
         subject: vec![AbacAttribute {
             namespace_id: *IAM_NAMESPACE_ID,
@@ -301,13 +304,6 @@ fn build_record() -> AbacPolicy {
             value: "any".to_owned(),
         }],
     }
-}
-
-fn create_record(conn: &PgConnection) -> AbacPolicy {
-    diesel::insert_into(abac_policy::table)
-        .values(build_record())
-        .get_result(conn)
-        .unwrap()
 }
 
 fn find_record(conn: &PgConnection) -> diesel::QueryResult<usize> {

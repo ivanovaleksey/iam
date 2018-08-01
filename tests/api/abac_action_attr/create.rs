@@ -2,9 +2,8 @@ use actix_web::HttpMessage;
 use diesel::{self, prelude::*};
 use serde_json;
 
-use abac::models::{AbacPolicy, NewAbacAction};
-use abac::schema::{abac_action, abac_policy};
-use abac::AbacAttribute;
+use abac::prelude::*;
+use abac::schema::*;
 
 use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};
@@ -126,7 +125,7 @@ mod with_client {
             let netology_account = create_account(&conn, AccountKind::Netology);
 
             diesel::insert_into(abac_policy::table)
-                .values(AbacPolicy {
+                .values(NewAbacPolicy {
                     subject: vec![AbacAttribute::new(
                         iam_namespace.id,
                         UriKind::Account(netology_account.id),
