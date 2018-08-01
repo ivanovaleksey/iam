@@ -36,7 +36,7 @@ fn before_each(conn: &PgConnection) -> (Account, Namespace) {
         .unwrap();
 
     diesel::insert_into(abac_object::table)
-        .values(AbacObject {
+        .values(NewAbacObject {
             inbound: AbacAttribute {
                 namespace_id: iam_namespace.id,
                 key: "uri".to_owned(),

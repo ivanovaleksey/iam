@@ -3,7 +3,7 @@ use diesel::{self, prelude::*};
 use serde_json;
 use uuid::Uuid;
 
-use abac::models::{AbacObject, AbacPolicy};
+use abac::models::{AbacPolicy, NewAbacObject};
 use abac::schema::{abac_object, abac_policy};
 use abac::AbacAttribute;
 
@@ -213,7 +213,7 @@ mod when_storage_use_case {
         );
 
         diesel::insert_into(abac_object::table)
-            .values(vec![AbacObject {
+            .values(vec![NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: storage_namespace.id,
                     key: "uri".to_owned(),
@@ -241,7 +241,7 @@ mod when_storage_use_case {
                 let _ = before_each_2(&conn);
 
                 diesel::insert_into(abac_object::table)
-                    .values(AbacObject {
+                    .values(NewAbacObject {
                         inbound: AbacAttribute {
                             namespace_id: *STORAGE_NAMESPACE_ID,
                             key: "uri".to_owned(),
@@ -311,7 +311,7 @@ mod when_storage_use_case {
                 let _ = before_each_2(&conn);
 
                 diesel::insert_into(abac_object::table)
-                    .values(AbacObject {
+                    .values(NewAbacObject {
                         inbound: AbacAttribute {
                             namespace_id: *STORAGE_NAMESPACE_ID,
                             key: "uri".to_owned(),
@@ -369,8 +369,8 @@ mod when_storage_use_case {
         }
     }
 
-    fn build_record() -> AbacObject {
-        AbacObject {
+    fn build_record() -> NewAbacObject {
+        NewAbacObject {
             inbound: AbacAttribute {
                 namespace_id: *STORAGE_NAMESPACE_ID,
                 key: "uri".to_owned(),
@@ -406,7 +406,7 @@ fn anonymous_cannot_create_record() {
     }
 }
 
-fn build_request(record: Option<&AbacObject>) -> serde_json::Value {
+fn build_request(record: Option<&NewAbacObject>) -> serde_json::Value {
     let default = build_record();
 
     json!({
@@ -417,8 +417,8 @@ fn build_request(record: Option<&AbacObject>) -> serde_json::Value {
     })
 }
 
-fn build_record() -> AbacObject {
-    AbacObject {
+fn build_record() -> NewAbacObject {
+    NewAbacObject {
         inbound: AbacAttribute {
             namespace_id: *FOXFORD_NAMESPACE_ID,
             key: "uri".to_owned(),
@@ -432,7 +432,7 @@ fn build_record() -> AbacObject {
     }
 }
 
-fn find_record(conn: &PgConnection, record: Option<AbacObject>) -> diesel::QueryResult<usize> {
+fn find_record(conn: &PgConnection, record: Option<NewAbacObject>) -> diesel::QueryResult<usize> {
     let record = record.or_else(|| Some(build_record())).unwrap();
 
     abac_object::table

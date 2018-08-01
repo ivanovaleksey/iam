@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, schema::abac_object, AbacAttribute};
+use abac::{models::NewAbacObject, schema::abac_object, AbacAttribute};
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
@@ -96,7 +96,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
             "abac_action",
             "abac_policy",
         ].iter()
-            .map(|collection| AbacObject {
+            .map(|collection| NewAbacObject {
                 inbound: AbacAttribute {
                     namespace_id: namespace.id,
                     key: "type".to_owned(),

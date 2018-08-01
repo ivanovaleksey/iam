@@ -1,5 +1,5 @@
 use abac::{
-    models::{AbacObject, AbacPolicy}, schema::{abac_object, abac_policy}, AbacAttribute,
+    models::{NewAbacObject, AbacPolicy}, schema::{abac_object, abac_policy}, AbacAttribute,
 };
 use actix::prelude::*;
 use diesel::{self, prelude::*};
@@ -47,11 +47,11 @@ pub fn insert_account_links(conn: &PgConnection, account_id: Uuid) -> QueryResul
     let account_uri = UriKind::Account(account_id);
     diesel::insert_into(abac_object::table)
         .values(vec![
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, account_uri.clone()),
                 outbound: AbacAttribute::new(iam_namespace_id, CollectionKind::Account),
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, account_uri),
                 outbound: AbacAttribute::new(
                     iam_namespace_id,

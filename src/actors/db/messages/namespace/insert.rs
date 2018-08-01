@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, schema::abac_object, AbacAttribute};
+use abac::{models::NewAbacObject, schema::abac_object, AbacAttribute};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 
@@ -44,14 +44,14 @@ pub fn insert_namespace_links(conn: &PgConnection, namespace: &Namespace) -> Que
     let namespace_uri = UriKind::Namespace(namespace.id);
     diesel::insert_into(abac_object::table)
         .values(vec![
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, namespace_uri.clone()),
                 outbound: AbacAttribute::new(
                     iam_namespace_id,
                     UriKind::Account(namespace.account_id),
                 ),
             },
-            AbacObject {
+            NewAbacObject {
                 inbound: AbacAttribute::new(iam_namespace_id, namespace_uri),
                 outbound: AbacAttribute::new(iam_namespace_id, CollectionKind::Namespace),
             },
