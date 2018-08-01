@@ -1,4 +1,4 @@
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use diesel;
 use futures::future::{self, Either, Future};
 use uuid::Uuid;

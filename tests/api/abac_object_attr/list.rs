@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use abac::models::{AbacObject, AbacPolicy};
 use abac::schema::{abac_object, abac_policy};
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 
 use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};

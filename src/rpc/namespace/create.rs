@@ -1,4 +1,4 @@
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use chrono::{DateTime, Utc};
 use futures::future::{self, Future};
 use uuid::Uuid;

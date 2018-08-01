@@ -46,7 +46,7 @@ fn delete_namespace(conn: &PgConnection, id: Uuid) -> QueryResult<Namespace> {
 }
 
 fn delete_namespace_links(conn: &PgConnection, namespace: &Namespace) -> QueryResult<usize> {
-    use abac::{schema::abac_object, types::AbacAttribute};
+    use abac::{schema::abac_object, AbacAttribute};
     use abac_attribute::UriKind;
     use settings;
 

@@ -1,4 +1,4 @@
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 use uuid::Uuid;

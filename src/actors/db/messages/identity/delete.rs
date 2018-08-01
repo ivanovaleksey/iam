@@ -52,7 +52,7 @@ fn delete_identity_with_account(conn: &PgConnection, pk: &PrimaryKey) -> QueryRe
 }
 
 fn delete_identity_links(conn: &PgConnection, identity: &Identity) -> QueryResult<usize> {
-    use abac::{schema::abac_object, types::AbacAttribute};
+    use abac::{schema::abac_object, AbacAttribute};
     use abac_attribute::UriKind;
     use settings;
 

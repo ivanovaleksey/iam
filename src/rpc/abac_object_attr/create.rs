@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, types::AbacAttribute};
+use abac::{models::AbacObject, AbacAttribute};
 use futures::{future, Future};
 
 use rpc;

@@ -334,7 +334,7 @@ fn find_record(conn: &PgConnection) -> QueryResult<Namespace> {
 
 fn namespace_objects_count(conn: &PgConnection) -> diesel::QueryResult<usize> {
     use abac::schema::abac_object;
-    use abac::types::AbacAttribute;
+    use abac::AbacAttribute;
     use iam::abac_attribute::UriKind;
 
     abac_object::table

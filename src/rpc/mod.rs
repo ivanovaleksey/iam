@@ -1,4 +1,4 @@
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use actix::Addr;
 use actix_web::{self, HttpMessage, HttpRequest, HttpResponse};
 use diesel::QueryResult;

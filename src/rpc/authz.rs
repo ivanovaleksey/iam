@@ -1,4 +1,4 @@
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use futures::Future;
 use jsonrpc::BoxFuture;
 use uuid::Uuid;

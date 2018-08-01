@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use abac::models::AbacPolicy;
 use abac::schema::abac_policy;
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 
 use iam::models::{identity::PrimaryKey, Account, Namespace};
 use iam::schema::{account, identity};

@@ -1,4 +1,4 @@
-use abac::{models::AbacAction, types::AbacAttribute};
+use abac::{models::AbacAction, AbacAttribute};
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 

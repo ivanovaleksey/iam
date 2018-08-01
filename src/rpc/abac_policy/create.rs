@@ -1,4 +1,4 @@
-use abac::{models::AbacPolicy, types::AbacAttribute};
+use abac::{models::AbacPolicy, AbacAttribute};
 use futures::{future, Future};
 use uuid::Uuid;
 

@@ -5,7 +5,7 @@ use serde_json;
 
 use abac::models::prelude::*;
 use abac::schema::*;
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use iam::models::{Account, Namespace};
 
 use shared::db::{create_account, create_namespace, AccountKind, NamespaceKind};

@@ -1,5 +1,5 @@
 use abac::{
-    models::{AbacObject, AbacPolicy}, schema::{abac_object, abac_policy}, types::AbacAttribute,
+    models::{AbacObject, AbacPolicy}, schema::{abac_object, abac_policy}, AbacAttribute,
 };
 use actix::prelude::*;
 use diesel::{self, prelude::*};

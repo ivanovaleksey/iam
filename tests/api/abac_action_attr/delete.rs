@@ -3,7 +3,7 @@ use serde_json;
 
 use abac::models::{AbacAction, AbacPolicy};
 use abac::schema::{abac_action, abac_policy};
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 
 use iam::abac_attribute::{CollectionKind, OperationKind, UriKind};
 use iam::models::{Account, Namespace};

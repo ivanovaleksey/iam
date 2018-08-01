@@ -1,4 +1,4 @@
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 use actix::prelude::*;
 use diesel::{self, prelude::*};
 
@@ -35,7 +35,7 @@ mod all {
 
 mod has_target {
     use super::*;
-    use abac::types::AbacAttributeSqlType;
+    use abac::sql_types;
     use diesel::sql_types::{Array, Bool};
 
     #[derive(Debug)]
@@ -76,8 +76,8 @@ mod has_target {
         "#;
 
         diesel::dsl::sql_query(query)
-            .bind::<Array<AbacAttributeSqlType>, _>(attrs)
-            .bind::<AbacAttributeSqlType, _>(attr)
+            .bind::<Array<sql_types::AbacAttribute>, _>(attrs)
+            .bind::<sql_types::AbacAttribute, _>(attr)
             .get_result::<Exists>(conn)
             .map(|res| res.0)
     }

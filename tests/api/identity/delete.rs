@@ -5,7 +5,7 @@ use serde_json;
 use uuid::Uuid;
 
 use abac::schema::{abac_object, abac_policy};
-use abac::types::AbacAttribute;
+use abac::AbacAttribute;
 
 use iam::abac_attribute::UriKind;
 use iam::models::{identity::PrimaryKey, Account, Identity, Namespace};

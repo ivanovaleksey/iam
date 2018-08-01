@@ -1,4 +1,4 @@
-use abac::{models::AbacPolicy, types::AbacAttribute};
+use abac::{models::AbacPolicy, AbacAttribute};
 use actix::prelude::*;
 use diesel::prelude::*;
 use uuid::Uuid;

@@ -1,4 +1,4 @@
-use abac::{models::AbacObject, schema::abac_object, types::AbacAttribute};
+use abac::{models::AbacObject, schema::abac_object, AbacAttribute};
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
@@ -122,7 +122,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
 pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
     use abac::models::AbacAction;
     use abac::schema::abac_action;
-    use abac::types::AbacAttribute;
+    use abac::AbacAttribute;
 
     let operations = ["create", "read", "update", "delete", "list"]
         .iter()
