@@ -17,7 +17,7 @@ lazy_static! {
             "result": {
                 "data": {
                     "account_id": "FOXFORD_ACCOUNT_ID",
-                    "created_at": "2018-05-30T08:40:00Z",
+                    "created_at": "2018-05-30T08:40:01Z",
                     "label": "foxford.ru"
                 },
                 "id": "FOXFORD_NAMESPACE_ID"

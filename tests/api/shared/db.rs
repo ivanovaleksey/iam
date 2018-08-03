@@ -1,6 +1,6 @@
 use abac::prelude::*;
 use abac::schema::*;
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime, Utc};
 use diesel;
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -63,15 +63,35 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     use self::NamespaceKind::*;
     use iam::schema::namespace;
 
-    let (id, label, account_id) = match kind {
-        Iam(account_id) => (*IAM_NAMESPACE_ID, "iam.ng.services", account_id),
-        Foxford(account_id) => (*FOXFORD_NAMESPACE_ID, "foxford.ru", account_id),
-        Netology(account_id) => (*NETOLOGY_NAMESPACE_ID, "netology.ru", account_id),
+    let (id, label, account_id, created_at) = match kind {
+        Iam(account_id) => (
+            *IAM_NAMESPACE_ID,
+            "iam.ng.services",
+            account_id,
+            NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 0),
+        ),
+        Foxford(account_id) => (
+            *FOXFORD_NAMESPACE_ID,
+            "foxford.ru",
+            account_id,
+            NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 1),
+        ),
+        Netology(account_id) => (
+            *NETOLOGY_NAMESPACE_ID,
+            "netology.ru",
+            account_id,
+            NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 2),
+        ),
         Other {
             id,
             label,
             account_id,
-        } => (id, label, account_id),
+        } => (
+            id,
+            label,
+            account_id,
+            NaiveDateTime::from_timestamp(Utc::now().timestamp(), 0),
+        ),
     };
 
     let namespace = diesel::insert_into(namespace::table)
@@ -79,7 +99,7 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
             namespace::id.eq(id),
             namespace::label.eq(label),
             namespace::account_id.eq(account_id),
-            namespace::created_at.eq(NaiveDate::from_ymd(2018, 5, 30).and_hms(8, 40, 0)),
+            namespace::created_at.eq(created_at),
         ))
         .get_result::<Namespace>(conn)
         .unwrap();
@@ -90,9 +110,8 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
 
         let ns_uri = UriKind::Namespace(namespace.id);
         diesel::update(
-            abac_object::table.filter(
-                abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, ns_uri)),
-            ),
+            abac_object::table
+                .filter(abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, ns_uri))),
         ).set(abac_object::created_at.eq(namespace.created_at))
             .execute(conn)
             .unwrap();
@@ -163,9 +182,8 @@ pub fn insert_identity_links(conn: &PgConnection, identity: &Identity) {
     let pk = PrimaryKey::from(identity.to_owned());
     let identity_uri = UriKind::Identity(pk);
     diesel::update(
-        abac_object::table.filter(
-            abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, identity_uri)),
-        ),
+        abac_object::table
+            .filter(abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, identity_uri))),
     ).set(abac_object::created_at.eq(identity.created_at))
         .execute(conn)
         .unwrap();
