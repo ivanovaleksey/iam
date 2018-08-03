@@ -1,9 +1,11 @@
-use abac::{models::prelude::*, AbacAttribute};
+use abac::prelude::*;
+use abac::schema::*;
 use chrono::NaiveDate;
 use diesel;
 use diesel::prelude::*;
 use uuid::Uuid;
 
+use iam::actors::db;
 use iam::models::*;
 
 use shared::{
@@ -31,7 +33,6 @@ pub enum NamespaceKind<'a> {
 
 pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
     use self::AccountKind::*;
-    use iam::actors::db;
     use iam::schema::account;
 
     let id = match kind {
@@ -60,8 +61,6 @@ pub fn create_account(conn: &PgConnection, kind: AccountKind) -> Account {
 
 pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
     use self::NamespaceKind::*;
-    use abac::schema::abac_object;
-    use iam::actors::db;
     use iam::schema::namespace;
 
     let (id, label, account_id) = match kind {
@@ -85,7 +84,19 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
         .get_result::<Namespace>(conn)
         .unwrap();
 
-    db::namespace::insert::insert_namespace_links(conn, &namespace).unwrap();
+    {
+        use iam::abac_attribute::UriKind;
+        db::namespace::insert::insert_namespace_links(conn, &namespace).unwrap();
+
+        let ns_uri = UriKind::Namespace(namespace.id);
+        diesel::update(
+            abac_object::table.filter(
+                abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, ns_uri)),
+            ),
+        ).set(abac_object::created_at.eq(namespace.created_at))
+            .execute(conn)
+            .unwrap();
+    }
 
     if let Iam(_) = kind {
         let objects = [
@@ -121,8 +132,6 @@ pub fn create_namespace(conn: &PgConnection, kind: NamespaceKind) -> Namespace {
 }
 
 pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
-    use abac::schema::abac_action;
-
     let operations = ["create", "read", "update", "delete", "list"]
         .iter()
         .map(|operation| NewAbacAction {
@@ -141,6 +150,23 @@ pub fn create_operations(conn: &PgConnection, namespace_id: Uuid) {
 
     diesel::insert_into(abac_action::table)
         .values(operations)
+        .execute(conn)
+        .unwrap();
+}
+
+pub fn insert_identity_links(conn: &PgConnection, identity: &Identity) {
+    use iam::abac_attribute::UriKind;
+    use iam::models::identity::PrimaryKey;
+
+    db::identity::insert::insert_identity_links(conn, &identity).unwrap();
+
+    let pk = PrimaryKey::from(identity.to_owned());
+    let identity_uri = UriKind::Identity(pk);
+    diesel::update(
+        abac_object::table.filter(
+            abac_object::inbound.eq(AbacAttribute::new(*IAM_NAMESPACE_ID, identity_uri)),
+        ),
+    ).set(abac_object::created_at.eq(identity.created_at))
         .execute(conn)
         .unwrap();
 }

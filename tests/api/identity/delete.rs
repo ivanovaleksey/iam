@@ -570,8 +570,6 @@ fn find_account(conn: &PgConnection) -> QueryResult<Account> {
 }
 
 fn create_user_identity(conn: &PgConnection) -> Identity {
-    use iam::actors::db;
-
     let account = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
 
     let identity = diesel::insert_into(identity::table)
@@ -585,7 +583,7 @@ fn create_user_identity(conn: &PgConnection) -> Identity {
         .get_result::<Identity>(conn)
         .unwrap();
 
-    db::identity::insert::insert_identity_links(conn, &identity).unwrap();
+    shared::db::insert_identity_links(conn, &identity);
 
     identity
 }

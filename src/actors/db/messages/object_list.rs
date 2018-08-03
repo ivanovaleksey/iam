@@ -27,8 +27,5 @@ impl Handler<ObjectList> for DbExecutor {
 fn call(conn: &PgConnection, msg: &ObjectList) -> QueryResult<Vec<AbacAttribute>> {
     use abac::functions::abac_object_list;
 
-    let granted =
-        diesel::select(abac_object_list(&msg.objects, &msg.offset, &msg.limit)).get_results(conn)?;
-
-    Ok(granted)
+    diesel::select(abac_object_list(&msg.objects, &msg.offset, &msg.limit)).get_results(conn)
 }

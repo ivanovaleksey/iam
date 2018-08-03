@@ -606,8 +606,6 @@ fn build_request(provider: Option<Uuid>, account_id: Option<Uuid>) -> serde_json
 }
 
 fn create_records(conn: &PgConnection) {
-    use iam::actors::db;
-
     let user_account_1 = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_1));
     let user_account_2 = create_account(conn, AccountKind::Other(*USER_ACCOUNT_ID_2));
 
@@ -641,6 +639,6 @@ fn create_records(conn: &PgConnection) {
             .get_result::<Identity>(conn)
             .unwrap();
 
-        db::identity::insert::insert_identity_links(conn, &identity).unwrap();
+        shared::db::insert_identity_links(conn, &identity);
     }
 }
