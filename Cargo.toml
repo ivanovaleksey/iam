@@ -22,7 +22,7 @@ failure = "0.1"
 frank_jwt = "3.0"
 config = "0.9"
 lazy_static = "1.0"
-abac = { git = "https://github.com/netology-group/abac-rs", features = ["serde"] }
+abac = { path = "abac-rs", features = ["serde"] }
 ring = "0.12.1"
 jsonwebtoken = "4.0.1"
 

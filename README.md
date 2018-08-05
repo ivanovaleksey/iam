@@ -2,6 +2,7 @@
 
 Identity and Access Management
 
+[![Build Status](https://travis-ci.org/netology-group/iam.svg?branch=master)](https://travis-ci.org/netology-group/iam)
 [![dependency status](https://deps.rs/repo/github/netology-group/iam/status.svg)](https://deps.rs/repo/github/netology-group/iam)
 
 ### License

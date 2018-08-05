@@ -1,0 +1,4 @@
+[submodule "abac-rs"]
+	path = abac-rs
+	url = https://github.com/netology-group/abac-rs.git
+	branch = master
