@@ -1,9 +1,13 @@
-use actix_web::{self, http, test::TestServer};
+use actix_web::{http, test::TestServer};
 use diesel;
 use iam;
-use serde::ser::Serialize;
-use serde_json;
 use uuid::Uuid;
+
+pub use shared::api::request::{build_anonymous_request, build_auth_request};
+pub use shared::api::{
+    generate_client_access_token, generate_iam_access_token, generate_refresh_token,
+    sign_client_access_token, sign_iam_access_token,
+};
 
 pub mod api;
 pub mod db;
@@ -74,58 +78,6 @@ pub fn build_server() -> Server {
         });
 
     Server { srv, pool }
-}
-
-pub fn build_auth_request(
-    srv: &TestServer,
-    json: String,
-    account_id: Option<Uuid>,
-) -> actix_web::client::ClientRequest {
-    let account_id = account_id.or(Some(*IAM_ACCOUNT_ID));
-    build_rpc_request(srv, json, account_id)
-}
-
-pub fn build_anonymous_request(srv: &TestServer, json: String) -> actix_web::client::ClientRequest {
-    build_rpc_request(srv, json, None)
-}
-
-fn build_rpc_request(
-    srv: &TestServer,
-    json: String,
-    account_id: Option<Uuid>,
-) -> actix_web::client::ClientRequest {
-    let mut builder = srv.post();
-    builder.content_type("application/json");
-
-    if let Some(account_id) = account_id {
-        let auth_header = format!("Bearer {}", generate_access_token(account_id));
-        builder.header(http::header::AUTHORIZATION, auth_header);
-    }
-
-    builder.body(json).unwrap()
-}
-
-pub fn generate_access_token(sub: Uuid) -> String {
-    let token = iam::authn::jwt::AccessToken::new("foxford.ru".to_owned(), 300, sub);
-    sign_access_token(token)
-}
-
-pub fn generate_refresh_token(refresh_token: &iam::models::RefreshToken) -> String {
-    let token =
-        iam::authn::jwt::RefreshToken::new("foxford.ru".to_owned(), refresh_token.account_id);
-    iam::authn::jwt::RefreshToken::encode(&token, &refresh_token.keys[0]).unwrap()
-}
-
-pub fn sign_access_token<T: Serialize>(token: T) -> String {
-    use frank_jwt;
-
-    let settings = get_settings!();
-    frank_jwt::encode(
-        json!({}),
-        &settings.tokens.key,
-        &serde_json::to_value(token).unwrap(),
-        frank_jwt::Algorithm::ES256,
-    ).unwrap()
 }
 
 fn init() {

@@ -54,7 +54,7 @@ fn with_invalid_payload() {
         provider: "foxford.ru".to_owned(),
         label: "oauth2".to_owned(),
     };
-    let client_token = shared::generate_access_token(*FOXFORD_USER_ID);
+    let client_token = shared::generate_client_access_token(*FOXFORD_USER_ID);
 
     let payload = json!({
         "client_token": client_token,
@@ -84,7 +84,7 @@ fn with_invalid_grant_type() {
         provider: "foxford.ru".to_owned(),
         label: "oauth2".to_owned(),
     };
-    let client_token = shared::generate_access_token(*FOXFORD_USER_ID);
+    let client_token = shared::generate_client_access_token(*FOXFORD_USER_ID);
 
     let payload = json!({
         "grant_type": "authorization_code",
@@ -115,7 +115,7 @@ fn with_invalid_expires_in() {
         provider: "foxford.ru".to_owned(),
         label: "oauth2".to_owned(),
     };
-    let client_token = shared::generate_access_token(*FOXFORD_USER_ID);
+    let client_token = shared::generate_client_access_token(*FOXFORD_USER_ID);
 
     let payload = json!({
         "grant_type": "client_credentials",
@@ -157,7 +157,7 @@ fn with_invalid_client_token_payload() {
             "iat": NaiveDateTime::from_timestamp(now, 0).timestamp(),
             "sub": *FOXFORD_USER_ID,
         });
-        shared::sign_access_token(token)
+        shared::sign_client_access_token(token)
     };
 
     let payload = json!({
@@ -200,7 +200,7 @@ fn with_expired_client_token() {
             "iat": NaiveDateTime::from_timestamp(now - 400, 0).timestamp(),
             "sub": *FOXFORD_USER_ID,
         });
-        shared::sign_access_token(token)
+        shared::sign_client_access_token(token)
     };
 
     let payload = json!({
@@ -248,7 +248,7 @@ mod with_existing_identity {
             provider: "foxford.ru".to_owned(),
             label: "oauth2".to_owned(),
         };
-        let client_token = shared::generate_access_token(*FOXFORD_USER_ID);
+        let client_token = shared::generate_client_access_token(*FOXFORD_USER_ID);
 
         let payload = json!({
             "grant_type": "client_credentials",
@@ -297,7 +297,7 @@ mod with_existing_identity {
             provider: "foxford.ru".to_owned(),
             label: "oauth2".to_owned(),
         };
-        let client_token = shared::generate_access_token(*FOXFORD_USER_ID);
+        let client_token = shared::generate_client_access_token(*FOXFORD_USER_ID);
 
         let payload = json!({
             "grant_type": "client_credentials",
@@ -325,7 +325,7 @@ mod without_existing_identity {
             provider: "foxford.ru".to_owned(),
             label: "oauth2".to_owned(),
         };
-        let client_token = shared::generate_access_token(*FOXFORD_USER_ID);
+        let client_token = shared::generate_client_access_token(*FOXFORD_USER_ID);
 
         let payload = json!({
             "grant_type": "client_credentials",
