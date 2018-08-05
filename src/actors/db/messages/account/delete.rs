@@ -1,5 +1,6 @@
 use abac::{
-    schema::{abac_object, abac_policy}, AbacAttribute,
+    schema::{abac_object, abac_policy},
+    AbacAttribute,
 };
 use actix::prelude::*;
 use diesel::{self, prelude::*};

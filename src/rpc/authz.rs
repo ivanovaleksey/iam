@@ -47,7 +47,8 @@ impl Rpc for RpcImpl {
         msg.namespace_ids.dedup();
 
         let db = meta.db.unwrap();
-        let fut = db.send(msg)
+        let fut = db
+            .send(msg)
             .from_err::<rpc::error::Error>()
             .and_then(|res| Ok(Response::new(res?)));
 

@@ -55,7 +55,8 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Delete)],
                     };
 
-                    let f = db.send(msg)
+                    let f = db
+                        .send(msg)
                         .from_err()
                         .and_then(rpc::ensure_authorized)
                         .and_then(move |_| {
@@ -81,7 +82,8 @@ pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error
                         action: vec![AbacAttribute::new(iam_namespace_id, OperationKind::Delete)],
                     };
 
-                    let f = db.send(msg)
+                    let f = db
+                        .send(msg)
                         .from_err()
                         .and_then(rpc::ensure_authorized)
                         .and_then(|_| Err(diesel::result::Error::NotFound.into()));

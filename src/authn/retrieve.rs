@@ -39,7 +39,8 @@ pub fn call(
     use actix_web::FromRequest;
 
     let meta = req.state().rpc_meta.clone();
-    let content_type = req.headers()
+    let content_type = req
+        .headers()
         .get("Content-Type")
         .expect("Content-Type is not specified")
         .to_str()

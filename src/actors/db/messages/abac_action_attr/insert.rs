@@ -1,5 +1,6 @@
 use abac::{
-    models::{AbacAction, NewAbacAction}, AbacAttribute,
+    models::{AbacAction, NewAbacAction},
+    AbacAttribute,
 };
 use actix::prelude::*;
 use diesel::{self, prelude::*};

@@ -61,7 +61,8 @@ pub fn call(meta: rpc::Meta, req: &Request) -> impl Future<Item = Response, Erro
                     limit: 100,
                 };
                 db.send(msg).from_err().and_then(|res| {
-                    let ids = res?.into_iter()
+                    let ids = res?
+                        .into_iter()
                         .filter_map(|attr| {
                             let mut kv = attr.value.splitn(2, '/');
                             match (kv.next(), kv.next()) {
