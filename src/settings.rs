@@ -29,6 +29,7 @@ pub struct Settings {
     pub authentication: Authentication,
     pub tokens: Tokens,
     pub providers: BTreeMap<authn::AuthKey, Provider>,
+    pub pagination: Pagination,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -52,6 +53,12 @@ pub struct Provider {
     pub keyfile: PathBuf,
     #[serde(skip_deserializing)]
     pub key: String,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Pagination {
+    pub limit: u16,
+    pub limit_max: u16,
 }
 
 pub fn init() -> Result<(), failure::Error> {

@@ -8,19 +8,15 @@ use rpc;
 use settings;
 
 #[derive(Debug, Deserialize)]
-pub struct Request {
-    pub filter: Filter,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct Filter {
     pub provider: Option<Uuid>,
     pub account_id: Option<Uuid>,
 }
 
+pub type Request = rpc::ListRequest<Filter>;
 pub type Response = rpc::ListResponse<rpc::identity::read::Response>;
 
-pub fn call(meta: rpc::Meta, req: &Request) -> impl Future<Item = Response, Error = rpc::Error> {
+pub fn call(meta: rpc::Meta, req: Request) -> impl Future<Item = Response, Error = rpc::Error> {
     use abac_attribute::{CollectionKind, OperationKind, UriKind};
 
     let iam_namespace_id = settings::iam_namespace_id();
@@ -65,6 +61,10 @@ pub fn call(meta: rpc::Meta, req: &Request) -> impl Future<Item = Response, Erro
             }
         })
         .and_then({
+            let limit = req.pagination.limit;
+            move |_| rpc::pagination::check_limit(limit)
+        })
+        .and_then({
             let db = meta.db.clone().unwrap();
 
             move |_| {
@@ -72,8 +72,8 @@ pub fn call(meta: rpc::Meta, req: &Request) -> impl Future<Item = Response, Erro
 
                 let msg = ObjectList {
                     objects,
-                    offset: 0,
-                    limit: 100,
+                    limit: req.pagination.limit,
+                    offset: req.pagination.offset,
                 };
                 db.send(msg).from_err().and_then(|res| {
                     let ids = res?

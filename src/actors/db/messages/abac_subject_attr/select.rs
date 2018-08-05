@@ -9,6 +9,8 @@ use actors::DbExecutor;
 pub struct Select {
     pub namespace_ids: Vec<Uuid>,
     pub key: Option<String>,
+    pub limit: u16,
+    pub offset: u16,
 }
 
 impl Message for Select {
@@ -40,6 +42,9 @@ fn call(conn: &PgConnection, msg: &Select) -> QueryResult<Vec<AbacSubject>> {
                 .namespace_id()
                 .eq(any(&msg.namespace_ids)),
         )
+        .order(abac_subject::created_at.asc())
+        .limit(i64::from(msg.limit))
+        .offset(i64::from(msg.offset))
         .into_boxed();
 
     if let Some(ref key) = msg.key {

@@ -11,6 +11,8 @@ abac_subject_attr.list
 Name   | Type   | Default    | Description
 -------| ------ | ---------- | ------------------
 filter | object | _required_ | -
+limit  | int    | see config | -
+offset | int    | 0          | -
 
 #### Filter
 
@@ -32,7 +34,9 @@ key           | string | -          | -
             "namespace_ids": [
                 "a6b56e6c-39a9-45c4-9720-9e288fd9bb3a"
             ]
-        }
+        },
+        "limit": 25,
+        "offset": 0
     }],
     "id": "qwerty"
 }
