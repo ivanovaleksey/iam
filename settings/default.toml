@@ -1,0 +1,18 @@
+iam_namespace_id = "bab37008-3dc5-492c-af73-80c241241d71"
+
+[authentication]
+keyfile = "tests/keys/iam/public_key.pem"
+
+[tokens]
+keyfile = "tests/keys/iam/private_key.pem"
+expires_in = 300 # in seconds
+expires_in_max = 14400 # in seconds
+
+[providers]
+
+[providers."oauth2.foxford.ru"]
+keyfile = "tests/keys/iam/public_key.pem"
+
+[pagination]
+limit = 25
+limit_max = 100

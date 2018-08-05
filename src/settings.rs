@@ -3,10 +3,10 @@ use failure;
 use uuid::Uuid;
 
 use std::collections::BTreeMap;
-use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::RwLock;
+use std::{env, fs};
 
 use authn;
 
@@ -59,7 +59,16 @@ pub fn init() -> Result<(), failure::Error> {
     let mut settings = SETTINGS.write().unwrap();
 
     let mut c = Config::new();
-    c.merge(File::with_name("Settings.toml"))?;
+    c.merge(File::with_name("settings/default.toml"))?;
+
+    if env::var("IAM_ENV").is_err() {
+        let default = if cfg!(test) { "test" } else { "development" };
+        env::set_var("IAM_ENV", default);
+    }
+
+    let env = env::var("IAM_ENV").expect("Must be set");
+    c.merge(File::with_name(&format!("settings/{}.toml", env)).required(false))?;
+
     *settings = c.try_into::<Settings>()?;
 
     let mut file = fs::File::open(&settings.authentication.keyfile)?;
