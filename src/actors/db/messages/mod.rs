@@ -9,3 +9,4 @@ pub mod identity;
 pub mod namespace;
 pub mod object_list;
 pub mod refresh_token;
+pub mod tree;
