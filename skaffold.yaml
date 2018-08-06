@@ -1,0 +1,21 @@
+apiVersion: skaffold/v1alpha2
+kind: Config
+build:
+  artifacts:
+    - imageName: netologygroup/iam
+      docker:
+        dockerfilePath: docker/Dockerfile
+    - imageName: netologygroup/iam-migrations
+      docker:
+        dockerfilePath: docker/migrations.Dockerfile
+  tagPolicy:
+    envTemplate:
+      template: "{{.IMAGE_NAME}}:{{.DOCKER_IMAGE_TAG}}"
+  local:
+    skipPush: false
+    useDockerCLI: true
+deploy:
+  kubectl:
+    manifests:
+      - k8s/iam.yaml
+      - k8s/iam-migrations.yaml
