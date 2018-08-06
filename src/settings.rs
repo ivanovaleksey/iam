@@ -62,7 +62,7 @@ pub struct Pagination {
 }
 
 pub fn init() -> Result<(), failure::Error> {
-    debug!("Initializing settings");
+    info!("Initializing settings");
     let mut settings = SETTINGS.write().unwrap();
 
     let mut c = Config::new();

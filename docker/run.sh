@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ev
+set -ex
 
 run_migrations() {
     docker run --rm \

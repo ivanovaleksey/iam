@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iam-seeds
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: iam-seeds
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: seed-scripts
+        configMap:
+          name: iam-seeds-configmap
+          defaultMode: 0744
+      containers:
+      - name: iam-seeds
+        image: netologygroup/iam-seeds
+        command: ["/seed-scripts/script.sh"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-iam-credentials
+              key: database_url
+        volumeMounts:
+        - name: seed-scripts
+          mountPath: /seed-scripts
+        resources:
+          requests:
+            cpu: 500m
+            memory: 250Mi
+          limits:
+            cpu: 700m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iam-seeds-configmap
+data:
+  script.sh: |
+    #!/bin/sh -ev
+    psql ${DATABASE_URL} -f seeds/2018-08-08-114459_init.sql
