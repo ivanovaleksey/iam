@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iam-migrations
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: iam-migrations
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: migration-scripts
+        configMap:
+          name: iam-migrations-configmap
+          defaultMode: 0744
+      containers:
+      - name: iam-migrations
+        image: netologygroup/iam-migrations
+        command: [ "/migration-scripts/script.sh" ]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-iam-credentials
+              key: database_url
+        volumeMounts:
+        - name: migration-scripts
+          mountPath: /migration-scripts
+        resources:
+          requests:
+            cpu: 500m
+            memory: 250Mi
+          limits:
+            cpu: 700m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iam-migrations-configmap
+data:
+  script.sh: |
+    #!/bin/sh -ev
+    diesel migration run --migration-dir abac-rs/migrations/
+    diesel migration run --migration-dir migrations/

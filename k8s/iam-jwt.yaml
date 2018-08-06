@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iam-cli
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: iam-cli
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: iam-cli
+        image: netologygroup/iam-cli
+        command: [ "/cli-scripts/script.sh" ]
+        volumeMounts:
+        - name: config
+          mountPath: /app/Settings.toml
+          subPath: Settings.toml
+        - name: auth-keys
+          mountPath: /app/keys/
+        - name: cli-scripts
+          mountPath: /cli-scripts
+        resources:
+          requests:
+            cpu: 500m
+            memory: 250Mi
+          limits:
+            cpu: 700m
+            memory: 512Mi
+      volumes:
+      - name: config
+        configMap:
+          name: iam-configmap
+      - name: auth-keys
+        secret:
+          secretName: iam-credentials
+      - name: cli-scripts
+        configMap:
+          name: iam-cli-configmap
+          defaultMode: 0744
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iam-cli-configmap
+data:
+  script.sh: |
+    #!/bin/sh -ev
+    ./iam-cli encode --aud iam.netology-group.ru --exp 8640000 --sub 8a57433b-132f-4941-b3e2-d5d582917056
