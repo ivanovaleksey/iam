@@ -1,9 +1,9 @@
 extern crate actix;
 extern crate actix_web;
 extern crate diesel;
-extern crate migrations_internals;
 extern crate env_logger;
 extern crate iam;
+extern crate migrations_internals;
 #[macro_use]
 extern crate log;
 
@@ -24,11 +24,11 @@ fn main() {
     {
         let conn = pool.get().expect("Failed to get a connection from pool");
         match migrations_internals::any_pending_migrations(&conn) {
-            Ok(false) => {},
+            Ok(false) => {}
             Ok(true) => {
                 error!("There are pending migrations");
                 std::process::exit(1);
-            },
+            }
             Err(e) => {
                 error!("{}", e);
                 std::process::exit(1);
