@@ -63,9 +63,7 @@ pub struct AppState {
     pub rpc_meta: Meta,
 }
 
-pub fn build_app(database_url: String) -> App<AppState> {
-    let manager = r2d2::ConnectionManager::<PgConnection>::new(database_url);
-    let pool = r2d2::Pool::new(manager).unwrap();
+pub fn build_app(pool: DbPool) -> App<AppState> {
     App::with_state(build_app_state(pool))
         .middleware(actix_web::middleware::Logger::default())
         .resource("/", |r| r.method(http::Method::POST).with_async(rpc::index))
