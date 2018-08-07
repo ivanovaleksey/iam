@@ -18,7 +18,7 @@ fn main() {
     let sys = System::new("iam");
 
     let app = move || iam::build_app(database_url.clone());
-    server::new(app).bind("127.0.0.1:8080").unwrap().start();
+    server::new(app).bind("0.0.0.0:8080").unwrap().start();
 
     let _ = sys.run();
 }
