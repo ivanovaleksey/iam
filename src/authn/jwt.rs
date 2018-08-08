@@ -5,6 +5,8 @@ use jsonwebtoken;
 use serde_json;
 use uuid::Uuid;
 
+use std::fmt;
+
 use authn::AuthKey;
 
 const ISSUER: &str = "iam.netology-group.services";
@@ -33,7 +35,7 @@ impl<'a> RawToken<'a> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub struct AccessToken {
     pub aud: String,
     pub iss: String,
@@ -45,7 +47,7 @@ pub struct AccessToken {
 }
 
 impl AccessToken {
-    pub fn new(aud: String, exp: u16, sub: Uuid) -> Self {
+    pub fn new(aud: String, exp: u32, sub: Uuid) -> Self {
         let now = Utc::now().timestamp();
 
         AccessToken {
@@ -85,6 +87,16 @@ impl AccessToken {
     pub fn default_expires_in() -> u16 {
         let settings = get_settings!();
         settings.tokens.expires_in
+    }
+}
+
+impl fmt::Debug for AccessToken {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "AccessToken {{ aud: {}, iss: {}, exp: {}, iat: {}, sub: {} }}",
+            self.aud, self.iss, self.exp, self.iat, self.sub
+        )
     }
 }
 

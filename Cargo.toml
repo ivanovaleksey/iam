@@ -26,6 +26,7 @@ lazy_static = "1.0"
 abac = { path = "abac-rs", features = ["serde"] }
 ring = "0.12.1"
 jsonwebtoken = "4.0.1"
+quicli = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "*"
