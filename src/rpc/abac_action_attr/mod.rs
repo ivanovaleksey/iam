@@ -7,6 +7,7 @@ pub mod create;
 pub mod delete;
 pub mod list;
 pub mod read;
+pub mod tree;
 
 build_rpc_trait! {
     pub trait Rpc {
@@ -23,6 +24,9 @@ build_rpc_trait! {
 
         #[rpc(meta, name = "abac_action_attr.list")]
         fn list(&self, Self::Metadata, list::Request) -> BoxFuture<list::Response>;
+
+        #[rpc(meta, name = "abac_action_attr.tree")]
+        fn tree(&self, Self::Metadata, tree::Request) -> BoxFuture<tree::Response>;
     }
 }
 
@@ -46,5 +50,9 @@ impl Rpc for RpcImpl {
 
     fn list(&self, meta: rpc::Meta, req: list::Request) -> BoxFuture<list::Response> {
         Box::new(list::call(meta, req).from_err())
+    }
+
+    fn tree(&self, meta: rpc::Meta, req: tree::Request) -> BoxFuture<tree::Response> {
+        Box::new(tree::call(meta, req).from_err())
     }
 }

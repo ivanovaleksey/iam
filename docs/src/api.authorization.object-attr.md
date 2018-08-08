@@ -5,3 +5,4 @@
 - [Read](api.authorization.object-attr.read.html)
 - [Delete](api.authorization.object-attr.delete.html)
 - [List](api.authorization.object-attr.list.html)
+- [Tree](api.authorization.object-attr.tree.html)

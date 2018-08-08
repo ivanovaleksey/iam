@@ -102,6 +102,8 @@ pub struct ListRequest<T = ListRequestFilter> {
     pub pagination: Pagination,
 }
 
+pub type TreeRequest = ListRequest<TreeRequestFilter>;
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListRequestFilter {
@@ -109,8 +111,23 @@ pub struct ListRequestFilter {
     pub key: Option<String>,
 }
 
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct TreeRequestFilter {
+    pub direction: DirectionKind,
+    pub attribute: AbacAttribute,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DirectionKind {
+    Inbound,
+    Outbound,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ListResponse<T>(Vec<T>);
+
+pub type TreeResponse = ListResponse<AbacAttribute>;
 
 impl<T, I> From<Vec<I>> for ListResponse<T>
 where
@@ -351,5 +368,31 @@ mod tests {
             offset: 3,
         };
         assert_eq!(req.pagination, expected);
+    }
+
+    #[test]
+    fn deserialize_tree_request_filter() {
+        let s = r#"{
+            "direction": "inbound",
+            "attribute": {
+                "namespace_id": "bab37008-3dc5-492c-af73-80c241241d71",
+                "key": "role",
+                "value": "client"
+            }
+        }"#;
+
+        let f = serde_json::from_str::<TreeRequestFilter>(s);
+        assert!(f.is_ok());
+
+        let f = f.unwrap();
+        let expected = TreeRequestFilter {
+            direction: DirectionKind::Inbound,
+            attribute: AbacAttribute {
+                namespace_id: Uuid::parse_str("bab37008-3dc5-492c-af73-80c241241d71").unwrap(),
+                key: "role".to_owned(),
+                value: "client".to_owned(),
+            },
+        };
+        assert_eq!(f, expected);
     }
 }
