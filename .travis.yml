@@ -43,6 +43,6 @@ stages:
   - name: compile
   - name: test
   - name: deploy
-    if: branch = master AND type = push
+    if: (branch = master AND type = push) OR env(TRAVIS_TAG) IS present
 notifications:
   email: false
