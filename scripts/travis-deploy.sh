@@ -18,7 +18,7 @@ kubectl config set-context media --cluster media --user travis --namespace=${NAM
 kubectl config use-context media
 
 CONFIGMAP_FILE="https://raw.githubusercontent.com/netology-group/environment/master/cluster/k8s/apps/iam/ns/${NAMESPACE}/iam-configmap.yaml"
-curl -fsSL "${CONFIGMAP_FILE}?token=${GITHUB_TOKEN}" | kubectl apply -f -
+#curl -fsSL "${CONFIGMAP_FILE}?token=${GITHUB_TOKEN}" | kubectl apply -f -
 
 export DOCKER_IMAGE_TAG=netologygroup
 export DOCKER_IMAGE_TAG=$(if [[ ${TRAVIS_TAG} ]]; then echo ${TRAVIS_TAG}; else echo $(git rev-parse --short HEAD); fi)
