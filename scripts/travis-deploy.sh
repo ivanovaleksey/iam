@@ -6,8 +6,6 @@ export DOCKER_IMAGE_TAG=$(if [[ ${TRAVIS_TAG} ]]; then echo ${TRAVIS_TAG}; else 
 
 echo "Deploy ${NAMESPACE}"
 
-docker run -v cargo-cache:/root/.cargo -v "${PWD}:/volume" --rm -it clux/muslrust cargo build --release
-
 mkdir -p ${HOME}/.local/bin
 export PATH=${HOME}/.local/bin:${PATH}
 
