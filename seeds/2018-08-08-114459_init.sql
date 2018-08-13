@@ -10,7 +10,7 @@ begin
   values (_a_iam_id, 'HS256', array[gen_random_bytes(64)]);
 
   insert into namespace (id, label, account_id)
-  values (_n_iam_id, 'iam.ng.services', _a_iam_id);
+  values (_n_iam_id, 'iam.netology-group.services', _a_iam_id);
 
   insert into abac_subject (inbound, outbound)
   values (('account/' || _a_iam_id, 'uri', _n_iam_id) :: abac_attribute, ('admin', 'role', _n_iam_id) :: abac_attribute);
